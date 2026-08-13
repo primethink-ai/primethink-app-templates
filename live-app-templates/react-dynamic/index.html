@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <title>PrimeThink React starter</title>
+  <style>
+    :root {
+      --canvas: #edf3f2;
+      --panel: #ffffff;
+      --ink: #162522;
+      --muted: #62716d;
+      --line: #c8d5d1;
+      --pine: #1f6f5d;
+      --pine-dark: #165346;
+      --mint: #d8eee8;
+      --danger: #b02f45;
+      --focus: #e49d2f;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+      color: var(--ink);
+      background: var(--canvas);
+    }
+    :root.dark {
+      --canvas: #091411;
+      --panel: #111f1b;
+      --ink: #edf7f3;
+      --muted: #9caea8;
+      --line: #324841;
+      --pine: #72cbb5;
+      --pine-dark: #9be0cf;
+      --mint: #173c33;
+      --danger: #ff91a4;
+      --focus: #ffc367;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--canvas); }
+    button, input { font: inherit; }
+    button:not(:disabled) { cursor: pointer; }
+    button:focus-visible, input:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+    .app { width: min(820px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0; }
+    .hero { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: start; margin-bottom: 26px; }
+    .kicker { margin: 0 0 10px; color: var(--pine-dark); font: 750 12px/1.2 ui-monospace, monospace; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { max-width: 650px; margin: 0; font-size: clamp(2.2rem, 7vw, 4.8rem); line-height: .92; letter-spacing: -.06em; }
+    .status { border: 1px solid var(--line); padding: 8px 10px; color: var(--muted); font: 700 11px/1.2 ui-monospace, monospace; white-space: nowrap; }
+    .status.connected { color: var(--pine-dark); border-color: var(--pine); background: var(--mint); }
+    .panel { border: 1px solid var(--line); background: var(--panel); box-shadow: 8px 8px 0 var(--line); }
+    .composer { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 16px; border-bottom: 1px solid var(--line); background: var(--mint); }
+    .composer input { min-width: 0; border: 1px solid var(--line); padding: 13px 14px; color: var(--ink); background: var(--panel); }
+    .primary { border: 1px solid var(--pine-dark); padding: 12px 18px; color: #fff; background: var(--pine-dark); font-weight: 800; }
+    :root.dark .primary { color: #0b1a16; }
+    .primary:hover:not(:disabled) { filter: brightness(1.12); }
+    button:disabled, input:disabled { opacity: .55; }
+    .panel-head { display: flex; justify-content: space-between; gap: 16px; padding: 16px 18px; border-bottom: 1px solid var(--line); }
+    .panel-head h2 { margin: 0; font-size: 1rem; }
+    .count { color: var(--muted); font: 700 12px/1.4 ui-monospace, monospace; }
+    .state { margin: 0; padding: 44px 18px; color: var(--muted); text-align: center; }
+    .state.error { color: var(--danger); }
+    .list { margin: 0; padding: 0; list-style: none; }
+    .row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 16px 18px; border-top: 1px solid var(--line); }
+    .row:first-child { border-top: 0; }
+    .row input { margin-top: 4px; accent-color: var(--pine); }
+    .text { margin: 0; overflow-wrap: anywhere; line-height: 1.5; }
+    .text.done { color: var(--muted); text-decoration: line-through; }
+    .meta { margin: 5px 0 0; color: var(--muted); font: 650 10px/1.3 ui-monospace, monospace; text-transform: uppercase; }
+    .delete { border: 0; padding: 5px; color: var(--muted); background: transparent; font-size: 12px; font-weight: 750; }
+    .delete:hover:not(:disabled) { color: var(--danger); }
+    .footnote { margin-top: 18px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+    code { color: var(--pine-dark); }
+    @media (max-width: 600px) {
+      .app { padding: 28px 0; }
+      .hero { grid-template-columns: 1fr; }
+      .composer { grid-template-columns: 1fr; }
+      .panel { box-shadow: 5px 5px 0 var(--line); }
+    }
+  </style>
+  <script>
+    (function () {
+      function apply(theme) {
+        var dark = theme === 'dark';
+        document.documentElement.classList.toggle('dark', dark);
+        document.documentElement.classList.toggle('light', !dark);
+      }
+      var forced = new URLSearchParams(location.search).get('theme');
+      apply(forced || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+      addEventListener('message', function (event) {
+        if (event.data && event.data.type === 'pt:theme') apply(event.data.theme);
+      });
+    })();
+  </script>
+  <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@19.2.8",
+        "react-dom/client": "https://esm.sh/react-dom@19.2.8/client",
+        "htm": "https://esm.sh/htm@3.1.1"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="root"><p class="state">Loading app…</p></div>
+  <script type="module">
+    import React, { useCallback, useEffect, useMemo, useState } from 'react';
+    import { createRoot } from 'react-dom/client';
+    import htm from 'htm';
+
+    const html = htm.bind(React.createElement);
+    // TODO: Give your production app a unique entity name.
+    const ENTITY_NAME = 'react_template_action';
+
+    function normalize(result) {
+      return Array.isArray(result) ? result : (Array.isArray(result?.entities) ? result.entities : []);
+    }
+
+    function ActionRow({ action, busy, onToggle, onDelete }) {
+      const done = action.data?.completed === true;
+      return html`
+        <li className="row">
+          <input
+            type="checkbox"
+            checked=${done}
+            disabled=${busy}
+            aria-label=${done ? 'Mark action active' : 'Mark action complete'}
+            onChange=${() => onToggle(action)}
+          />
+          <div>
+            <p className=${`text${done ? ' done' : ''}`}>${action.data?.text || 'Untitled action'}</p>
+            <p className="meta">${done ? 'Complete' : 'Active'} · record #${action.id}</p>
+          </div>
+          <button className="delete" type="button" disabled=${busy} onClick=${() => onDelete(action)}>Delete</button>
+        </li>
+      `;
+    }
+
+    function App() {
+      const [actions, setActions] = useState([]);
+      const [draft, setDraft] = useState('');
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState('');
+      const [saving, setSaving] = useState(false);
+      const [busyId, setBusyId] = useState(null);
+      const connected = Boolean(window.pt);
+
+      const load = useCallback(async ({ quiet = false } = {}) => {
+        if (!window.pt) {
+          setLoading(false);
+          return;
+        }
+        if (!quiet) setLoading(true);
+        setError('');
+        try {
+          const result = await window.pt.list({ entityNames: [ENTITY_NAME], limit: 100 });
+          setActions(normalize(result)
+            .filter((item) => item.entity_name === ENTITY_NAME)
+            .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)));
+        } catch (requestError) {
+          console.error('Could not load actions:', requestError);
+          setError('Actions could not be loaded. Refresh the app to try again.');
+        } finally {
+          setLoading(false);
+        }
+      }, []);
+
+      useEffect(() => {
+        load();
+        if (!window.pt?.onEntityChanged) return undefined;
+        let timer;
+        const unsubscribe = window.pt.onEntityChanged(() => {
+          clearTimeout(timer);
+          timer = setTimeout(() => load({ quiet: true }), 250);
+        });
+        return () => {
+          clearTimeout(timer);
+          if (typeof unsubscribe === 'function') unsubscribe();
+        };
+      }, [load]);
+
+      const counts = useMemo(() => ({
+        total: actions.length,
+        open: actions.filter((action) => action.data?.completed !== true).length
+      }), [actions]);
+
+      async function addAction(event) {
+        event.preventDefault();
+        const text = draft.trim();
+        if (!text || !connected || saving) return;
+        setSaving(true);
+        try {
+          await window.pt.add(ENTITY_NAME, { text, completed: false });
+          setDraft('');
+          await load({ quiet: true });
+        } catch (requestError) {
+          console.error('Could not add action:', requestError);
+          setError('The action was not saved. Try again.');
+        } finally {
+          setSaving(false);
+        }
+      }
+
+      async function toggleAction(action) {
+        setBusyId(action.id);
+        try {
+          await window.pt.edit(action.id, { completed: action.data?.completed !== true }, true);
+          await load({ quiet: true });
+        } catch (requestError) {
+          console.error('Could not update action:', requestError);
+          setError('The action was not updated. Try again.');
+        } finally {
+          setBusyId(null);
+        }
+      }
+
+      async function deleteAction(action) {
+        if (!window.confirm('Delete this action? This cannot be undone.')) return;
+        setBusyId(action.id);
+        try {
+          await window.pt.delete(action.id);
+          await load({ quiet: true });
+        } catch (requestError) {
+          console.error('Could not delete action:', requestError);
+          setError('The action was not deleted. Try again.');
+        } finally {
+          setBusyId(null);
+        }
+      }
+
+      let content;
+      if (loading) content = html`<p className="state">Loading actions…</p>`;
+      else if (error) content = html`<p className="state error">${error}</p>`;
+      else if (!connected) content = html`<p className="state">Open this app inside PrimeThink to use chat data.</p>`;
+      else if (actions.length === 0) content = html`<p className="state">No actions yet. Add the first one above.</p>`;
+      else content = html`
+        <ul className="list" aria-live="polite">
+          ${actions.map((action) => html`
+            <${ActionRow}
+              key=${action.id}
+              action=${action}
+              busy=${busyId === action.id}
+              onToggle=${toggleAction}
+              onDelete=${deleteAction}
+            />
+          `)}
+        </ul>
+      `;
+
+      return html`
+        <main className="app">
+          <header className="hero">
+            <div>
+              <p className="kicker">PrimeThink / working set</p>
+              <h1>Make the next move tangible.</h1>
+            </div>
+            <span className=${`status${connected ? ' connected' : ''}`}>
+              ${connected ? '● Platform connected' : '○ Open inside PrimeThink'}
+            </span>
+          </header>
+          <section className="panel" aria-labelledby="actionsTitle">
+            <form className="composer" onSubmit=${addAction}>
+              <label htmlFor="actionInput" hidden>New action</label>
+              <input
+                id="actionInput"
+                value=${draft}
+                maxLength="240"
+                required
+                autoComplete="off"
+                disabled=${!connected || saving}
+                placeholder="Write one concrete next move"
+                onInput=${(event) => setDraft(event.target.value)}
+              />
+              <button className="primary" type="submit" disabled=${!connected || saving || !draft.trim()}>
+                ${saving ? 'Adding…' : 'Add action'}
+              </button>
+            </form>
+            <header className="panel-head">
+              <h2 id="actionsTitle">Working set</h2>
+              <span className="count">${counts.open} open / ${counts.total} total</span>
+            </header>
+            ${content}
+          </section>
+          <p className="footnote">Template entity: <code>react_template_action</code>. Rename it before shipping.</p>
+        </main>
+      `;
+    }
+
+    createRoot(document.getElementById('root')).render(html`<${App} />`);
+  </script>
+</body>
+</html>

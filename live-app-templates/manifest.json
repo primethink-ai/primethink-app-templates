@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "templates": [
+    {
+      "id": "react-vite-tailwind-flowbite",
+      "framework": "react",
+      "tailwind": true,
+      "flowbite": true,
+      "path": "live-app-templates/react-vite-tailwind-flowbite"
+    },
+    {
+      "id": "react-tailwind-dynamic",
+      "framework": "react",
+      "tailwind": true,
+      "flowbite": false,
+      "path": "live-app-templates/react-tailwind-dynamic"
+    },
+    {
+      "id": "react-dynamic",
+      "framework": "react",
+      "tailwind": false,
+      "flowbite": false,
+      "path": "live-app-templates/react-dynamic"
+    },
+    {
+      "id": "html-tailwind-flowbite-dynamic",
+      "framework": "html",
+      "tailwind": true,
+      "flowbite": true,
+      "path": "live-app-templates/html-tailwind-flowbite-dynamic"
+    },
+    {
+      "id": "html-tailwind-dynamic",
+      "framework": "html",
+      "tailwind": true,
+      "flowbite": false,
+      "path": "live-app-templates/html-tailwind-dynamic"
+    },
+    {
+      "id": "html-dynamic",
+      "framework": "html",
+      "tailwind": false,
+      "flowbite": false,
+      "path": "live-app-templates/html-dynamic"
+    }
+  ]
+}

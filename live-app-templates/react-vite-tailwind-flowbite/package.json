@@ -1,0 +1,27 @@
+{
+  "name": "primethink-react-vite-tailwind-flowbite-template",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node scripts/verify-dist.mjs",
+    "preview": "vite preview",
+    "verify:dist": "node scripts/verify-dist.mjs"
+  },
+  "dependencies": {
+    "flowbite": "4.0.2",
+    "flowbite-react": "0.12.17",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@vitejs/plugin-react": "6.0.5",
+    "tailwindcss": "4.3.3",
+    "vite": "8.2.1"
+  }
+}

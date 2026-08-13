@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.flowbite-react/class-list.json
+*.log
+.DS_Store
+.flowbite-react/init.jsx

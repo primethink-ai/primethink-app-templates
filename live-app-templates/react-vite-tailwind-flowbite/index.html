@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="PrimeThink Vite React Live App starter">
+  <title>PrimeThink Vite React starter</title>
+
+  <!-- Keep this bridge: it applies the host theme before React's first paint. -->
+  <script>
+    (function () {
+      function apply(theme) {
+        var dark = theme === 'dark';
+        document.documentElement.classList.toggle('dark', dark);
+        document.documentElement.classList.toggle('light', !dark);
+      }
+      var forced = new URLSearchParams(location.search).get('theme');
+      apply(forced || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+      window.addEventListener('message', function (event) {
+        if (event.data && event.data.type === 'pt:theme') apply(event.data.theme);
+      });
+    })();
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+</html>
