@@ -1,38 +1,20 @@
 #!/usr/bin/env python3
 """
-Build script for regenerating primethink-developer skill references from source docs.
+Build the repository-owned ``primethink-developer`` skill references.
+
+Sources:
+- ``primethink-documentation/docs/{user,admin,developer}`` from documentation PR #1
+- ``primethink-cli`` reference, user guide, and bundled agent skill
+
+The builder creates portal-qualified curated summaries, exact full portal mirrors,
+focused Live App copies, and exact CLI copies. It also supports the documentation
+repository's legacy flat ``docs/`` layout while PR #1 is pending.
 
 Usage:
-    python build_skill_references.py                    # Regenerate all references
-    python build_skill_references.py --diff             # Show what changed
-    python build_skill_references.py --review           # Regenerate + invoke Claude Code to review
-    python build_skill_references.py --sync             # Sync exact copies without Claude review
-
-The script reads source markdown files from docs/, extracts and reorganizes content
-into curated reference files under primethink-developer/references/.
-
-Directory Structure (mirrors mkdocs nav):
-    references/
-    ├── index.md                         # PrimeThink overview
-    ├── getting-started/
-    │   └── summary.md                   # Condensed getting started
-    ├── core-features/
-    │   └── summary.md                   # Condensed core features
-    ├── ai-automation/
-    │   └── summary.md                   # Tasks, Agents (condensed)
-    ├── advanced-topics/
-    │   └── live-apps/
-    │       ├── index.md                 # Summary of Live Apps/Pages
-    │       └── docs/                    # Exact copies of source docs
-    │           ├── Live-Apps.md
-    │           ├── Data-Management-API.md
-    │           └── ... (all Live Pages docs)
-    ├── developer-guide/
-    │   └── summary.md                   # APIs, integrations (condensed)
-    └── resources/
-        └── summary.md                   # Use cases, troubleshooting
-
-IMPORTANT: This file generates auto-generated output. See AGENTS.md for details.
+    python build_skill_references.py --diff
+    python build_skill_references.py --sync
+    python build_skill_references.py --review
+    python build_skill_references.py --sync --force
 """
 
 import argparse
@@ -50,122 +32,204 @@ from datetime import datetime, timezone
 # =============================================================================
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-DEFAULT_DOCS_DIR = SCRIPT_DIR.parents[2] / 'primethink-documentation' / 'docs'
+OFFICIAL_REPOS_DIR = SCRIPT_DIR.parents[2]
+DEFAULT_DOCS_DIR = OFFICIAL_REPOS_DIR / 'primethink-documentation' / 'docs'
+DEFAULT_CLI_DIR = OFFICIAL_REPOS_DIR / 'primethink-cli'
 DOCS_DIR = Path(os.environ.get('PRIMETHINK_DOCS_DIR', DEFAULT_DOCS_DIR)).expanduser().resolve()
+CLI_DIR = Path(os.environ.get('PRIMETHINK_CLI_DIR', DEFAULT_CLI_DIR)).expanduser().resolve()
 REFERENCES_DIR = SCRIPT_DIR / 'references'
+PORTALS = {
+    'user': 'PrimeThink user documentation',
+    'admin': 'Group administration, agents, tasks, Live Apps, and Live Pages',
+    'developer': 'APIs, CLI, integrations, how-to guides, and architecture',
+}
 
-# Hash file to track source changes
+
+def resolve_doc(source: str) -> Path:
+    """Resolve a portal-qualified docs source or a ``cli:`` source."""
+    if source.startswith('cli:'):
+        return CLI_DIR / source.removeprefix('cli:')
+
+    relative = Path(source)
+    direct = DOCS_DIR / relative
+    if direct.exists():
+        return direct
+
+    # Before PR #1 is merged the docs checkout may still use the legacy flat
+    # layout. Portal-qualified IDs remain stable while this fallback keeps the
+    # builder usable on either side of the migration.
+    if relative.parts and relative.parts[0] in PORTALS:
+        return DOCS_DIR / relative.name
+
+    # Compatibility for callers that still pass a bare filename.
+    for portal in PORTALS:
+        candidate = DOCS_DIR / portal / relative
+        if candidate.exists():
+            return candidate
+    return direct
+
+
+def exact_copy_relative_path(section_path: str, source: str) -> Path:
+    """Return the destination path for an exact-copy source."""
+    raw = source.removeprefix('cli:')
+    relative = Path(raw)
+    if section_path.startswith('portals/'):
+        portal = section_path.split('/', 1)[1]
+        if relative.parts and relative.parts[0] == portal:
+            return Path(*relative.parts[1:])
+    return Path(relative.name)
+
+
+# Hash file to track source changes. Keys are source IDs such as
+# ``user/index.md`` or ``cli:docs/cli-reference.md`` so duplicate basenames in
+# different portals cannot collide.
 HASH_FILE = SCRIPT_DIR / '.source_hashes.json'
 
 # =============================================================================
 # REFERENCE STRUCTURE CONFIGURATION
 # =============================================================================
 
-# Sections that get summarized (condensed by Claude)
+# Sections that get summarized (condensed by Claude). Documentation source
+# IDs are always portal-qualified; this avoids ambiguous basename resolution.
 SUMMARIZED_SECTIONS = {
     'getting-started/summary.md': {
         'sources': [
-            'index.md',
-            'Download-PrimeThink.md',
-            'Quick-Start.md',
-            'Introduction.md',
-            'User-Interface-Guide-a-quick-look.md',
-            'Keyboard-Shortcuts.md',
+            'user/index.md',
+            'user/Download-PrimeThink.md',
+            'user/Quick-Start.md',
+            'user/Introduction.md',
+            'user/User-Interface-Guide-a-quick-look.md',
+            'user/Keyboard-Shortcuts.md',
         ],
-        'description': 'Getting started with PrimeThink - download, installation, quick start, UI basics',
+        'description': 'User portal - installation, quick start, and interface basics',
     },
     'core-features/summary.md': {
         'sources': [
-            'Documents-and-Collections-in-Chats.md',
-            'Supported-Document-Formats.md',
-            'Document-Actions.md',
-            'Managing-Document-Visibility.md',
-            'File-Storage-Hierarchy.md',
-            'Collections.md',
-            'Group-Management.md',
-            'Best-Practices-for-Group-Management.md',
-            'Collaboration.md',
-            'Notifications.md',
-            'App-Settings.md',
-            'UI-Settings.md',
+            'user/Documents-and-Collections-in-Chats.md',
+            'user/Supported-Document-Formats.md',
+            'user/Document-Actions.md',
+            'user/Managing-Document-Visibility.md',
+            'user/File-Storage-Hierarchy.md',
+            'user/Collections.md',
+            'user/Collaboration.md',
+            'user/Notifications.md',
+            'user/App-Settings.md',
+            'user/UI-Settings.md',
+            'admin/Group-Management.md',
+            'admin/Roles-and-Permissions.md',
+            'admin/Best-Practices-for-Group-Management.md',
         ],
-        'description': 'Core features - documents, collections, groups, users, collaboration, settings',
+        'description': 'User and admin portals - documents, collections, collaboration, settings, groups, and permissions',
     },
     'ai-automation/summary.md': {
         'sources': [
-            'Tasks.md',
-            'Task-Library.md',
-            'Agents.md',
-            'Agents-Library.md',
-            'What-is-an-Agent.md',
-            'Working-with-AI-Agents.md',
-            'What-is-an-LLM.md',
-            'Supported-LLMs.md',
-            'Capabilities.md',
-            'AI-Assistant-Tools.md',
-            'AI-Assistant-Tools-Part-II.md',
-            'Memory.md',
-            'Scheduled-Tasks.md',
+            'admin/Tasks.md',
+            'admin/Creating-Tasks.md',
+            'admin/Task-Library.md',
+            'admin/Agents.md',
+            'admin/Agents-Library.md',
+            'admin/Capabilities.md',
+            'admin/Internal-Capabilities.md',
+            'admin/API-Capabilities.md',
+            'admin/MCP-Capabilities.md',
+            'admin/Computer-Use-Capabilities.md',
+            'admin/Sandbox-Capabilities.md',
+            'admin/AI-Assistant-Tools.md',
+            'admin/AI-Assistant-Tools-Part-II.md',
+            'admin/Scheduled-Tasks.md',
+            'user/What-is-an-Agent.md',
+            'user/Working-with-AI-Agents.md',
+            'user/What-is-an-LLM.md',
+            'user/Supported-LLMs.md',
+            'user/Memory.md',
         ],
-        'description': 'AI & Automation - tasks, agents, LLMs, capabilities, tools, memory, scheduled jobs',
+        'description': 'Admin and user portals - tasks, agents, LLMs, capabilities, tools, memory, and scheduled jobs',
     },
     'developer-guide/summary.md': {
         'sources': [
-            'Integration-and-APIs.md',
-            'Email-Integration.md',
-            'PrimeThink-CLI.md',
-            'Third-party-Integrations.md',
-            'API-Reference.md',
-            'Image-Generation-API.md',
-            'Audio-Generation-API.md',
-            'API-Examples.md',
-            'API-Auth.md',
-            'API-Use-metadata-in-collections.md',
+            'developer/index.md',
+            'developer/Integration-and-APIs.md',
+            'developer/Email-Integration.md',
+            'developer/PrimeThink-CLI.md',
+            'developer/Third-party-Integrations.md',
+            'developer/API-Reference.md',
+            'developer/Image-Generation-API.md',
+            'developer/Audio-Generation-API.md',
+            'developer/API-Examples.md',
+            'developer/API-Auth.md',
+            'developer/API-Use-metadata-in-collections.md',
+            'developer/How-To.md',
+            'developer/Workspace-Memory-Architecture.md',
         ],
-        'description': 'Developer guide - integrations, CLI, APIs, authentication',
+        'description': 'Developer portal - APIs, CLI, integrations, how-to guides, and architecture',
     },
 }
 
-# Sections that get exact copies (full docs preserved)
+# Sections that get exact copies (full docs preserved).
 EXACT_COPY_SECTIONS = {
     'advanced-topics/live-apps': {
         'sources': [
-            'Live-Apps.md',
-            'Live-Apps-State-Management.md',
-            'Creating-Live-Pages.md',
-            'Data-Management-API.md',
-            'primethink_js_message_received.md',
-            'primethink_js_document_events.md',
-            'primethink_js_send_notifications.md',
-            'primethink_js_call_tool_direct.md',
-            'Real-Time-Data-Sync.md',
-            'File-Download-API.md',
-            'Filtering-and-Querying.md',
-            'Pagination.md',
-            'Working-with-Chat-Members.md',
-            'Live-Pages-Media-Generation.md',
-            'Audio-Diarization-API.md',
-            'Video-Analysis-API.md',
-            'Sandbox-Execution.md',
-            'Tool-Plugins.md',
-            'Styling-with-Tailwind.md',
-            'Live-Apps-Tailwind-v4.md',
-            'Live-Apps-Flowbite-Components.md',
-            'Live-Apps-Quill-Editor.md',
-            'Live-Pages-Basic-Examples.md',
-            'Live-Pages-Examples.md',
-            'Live-Pages-Best-Practices.md',
-            'primethink_manage.md',
-            'primethink_manage_ui.md',
+            'admin/Live-Apps.md',
+            'admin/Live-Apps-State-Management.md',
+            'admin/Creating-Live-Pages.md',
+            'admin/Data-Management-API.md',
+            'admin/primethink_js_message_received.md',
+            'admin/primethink_js_document_events.md',
+            'admin/primethink_js_send_notifications.md',
+            'admin/primethink_js_call_tool_direct.md',
+            'admin/Real-Time-Data-Sync.md',
+            'admin/File-Download-API.md',
+            'admin/Filtering-and-Querying.md',
+            'admin/Pagination.md',
+            'admin/Working-with-Chat-Members.md',
+            'admin/Live-Pages-Media-Generation.md',
+            'developer/Audio-Diarization-API.md',
+            'developer/Video-Analysis-API.md',
+            'admin/Sandbox-Execution.md',
+            'admin/Tool-Plugins.md',
+            'admin/Styling-with-Tailwind.md',
+            'admin/Live-Apps-Tailwind-v4.md',
+            'admin/Live-Apps-Flowbite-Components.md',
+            'admin/Live-Apps-Quill-Editor.md',
+            'admin/Live-Pages-Basic-Examples.md',
+            'admin/Live-Pages-Examples.md',
+            'admin/Live-Pages-Best-Practices.md',
+            'admin/primethink_manage.md',
+            'admin/primethink_manage_ui.md',
         ],
-        'index_description': 'Live Apps and Live Pages - interactive web applications with real-time data sync',
+        'index_description': 'Live Apps and Live Pages - focused full documentation from the admin and developer portals',
+    },
+    'developer-guide/cli': {
+        'sources': [
+            'cli:docs/cli-reference.md',
+            'cli:USER_GUIDE.md',
+            'cli:skills/primethink-cli/SKILL.md',
+        ],
+        'index_description': 'PrimeThink CLI - exact upstream reference, user guide, and bundled agent skill',
     },
 }
 
-# Main index file sources
+# Mirror every Markdown page in each PR #1 portal. This gives the skill complete,
+# deterministic coverage while curated summaries and focused sections remain the
+# fast progressive-disclosure entry points.
+for portal, description in PORTALS.items():
+    portal_dir = DOCS_DIR / portal
+    if portal_dir.is_dir():
+        sources = [
+            f"{portal}/{doc.relative_to(portal_dir).as_posix()}"
+            for doc in sorted(portal_dir.rglob('*.md'))
+        ]
+        EXACT_COPY_SECTIONS[f'portals/{portal}'] = {
+            'sources': sources,
+            'index_description': description,
+        }
+
+# Main index sources represent all three portals.
 INDEX_SOURCES = [
-    'index.md',
-    'Introduction.md',
+    'user/index.md',
+    'admin/index.md',
+    'developer/index.md',
+    'user/Introduction.md',
 ]
 
 
@@ -212,7 +276,7 @@ def get_changed_sources() -> dict:
 
     # Check index sources
     for source in INDEX_SOURCES:
-        filepath = DOCS_DIR / source
+        filepath = resolve_doc(source)
         if compute_file_hash(filepath) != old_hashes.get(source, ''):
             changes['index'].append(source)
 
@@ -220,7 +284,7 @@ def get_changed_sources() -> dict:
     for ref_name, config in SUMMARIZED_SECTIONS.items():
         changed = []
         for source in config['sources']:
-            filepath = DOCS_DIR / source
+            filepath = resolve_doc(source)
             if compute_file_hash(filepath) != old_hashes.get(source, ''):
                 changed.append(source)
         if changed:
@@ -230,7 +294,7 @@ def get_changed_sources() -> dict:
     for ref_name, config in EXACT_COPY_SECTIONS.items():
         changed = []
         for source in config['sources']:
-            filepath = DOCS_DIR / source
+            filepath = resolve_doc(source)
             if compute_file_hash(filepath) != old_hashes.get(source, ''):
                 changed.append(source)
         if changed:
@@ -243,7 +307,7 @@ def update_all_hashes():
     """Save hashes for all current source files."""
     hashes = {}
     for source in get_all_source_files():
-        filepath = DOCS_DIR / source
+        filepath = resolve_doc(source)
         hashes[source] = compute_file_hash(filepath)
     save_hashes(hashes)
 
@@ -258,7 +322,7 @@ def concatenate_sources(sources: list) -> str:
     """
     parts = []
     for source in sources:
-        filepath = DOCS_DIR / source
+        filepath = resolve_doc(source)
         if filepath.exists():
             content = filepath.read_text(encoding='utf-8')
             parts.append(f"{'=' * 60}\nSOURCE: {source}\n{'=' * 60}\n\n{content}")
@@ -288,7 +352,7 @@ def show_diff():
         for ref_name, files in changes['summarized'].items():
             print(f"  references/{ref_name}:")
             for f in files:
-                print(f"    - docs/{f}")
+                print(f"    - {f}")
 
     if changes['exact_copy']:
         has_changes = True
@@ -296,7 +360,7 @@ def show_diff():
         for ref_name, files in changes['exact_copy'].items():
             print(f"  references/{ref_name}/docs/:")
             for f in files:
-                print(f"    - docs/{f}")
+                print(f"    - {f}")
 
     if not has_changes:
         print("No source files have changed since last build.")
@@ -327,9 +391,10 @@ def sync_exact_copies(changed_only: bool = True):
 
         print(f"\nSyncing {section_path}/docs/:")
         for source in sources_to_copy:
-            src = DOCS_DIR / source
-            dst = docs_dir / source
+            src = resolve_doc(source)
+            dst = docs_dir / exact_copy_relative_path(section_path, source)
             if src.exists():
+                dst.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(src, dst)
                 print(f"  ✓ {source}")
             else:
@@ -353,10 +418,10 @@ def generate_section_index(section_path: str, config: dict):
     ]
 
     for source in config['sources']:
-        # Create a readable title from filename
-        title = source.replace('.md', '').replace('-', ' ').replace('_', ' ')
+        relative = exact_copy_relative_path(section_path, source)
+        title = relative.stem.replace('-', ' ').replace('_', ' ')
         title = title.replace('primethink js', 'JS API:').replace('primethink manage', 'Manage API')
-        lines.append(f"- [{title}](docs/{source})")
+        lines.append(f"- [{title}](docs/{relative.as_posix()})")
 
     lines.extend([
         "",
@@ -510,6 +575,7 @@ def main():
     print(f"PrimeThink Skill Reference Builder")
     print(f"{'=' * 60}")
     print(f"Docs directory: {DOCS_DIR}")
+    print(f"CLI directory: {CLI_DIR}")
     print(f"References directory: {REFERENCES_DIR}")
     print(f"Timestamp: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
     print(f"{'=' * 60}")
@@ -549,12 +615,12 @@ def main():
         for ref_name in changes['summarized']:
             print(f"\n  {ref_name} (summarized):")
             for f in changes['summarized'][ref_name]:
-                print(f"    changed: docs/{f}")
+                print(f"    changed: {f}")
 
         for ref_name in changes['exact_copy']:
             print(f"\n  {ref_name}/docs/ (exact copies):")
             for f in changes['exact_copy'][ref_name]:
-                print(f"    changed: docs/{f}")
+                print(f"    changed: {f}")
 
         print(f"\nTo sync exact copies:")
         print(f"  python {Path(__file__).name} --sync")
