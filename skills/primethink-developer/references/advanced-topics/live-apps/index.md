@@ -1,6 +1,6 @@
 # Live Apps and Live Pages
 
-Live Apps and Live Pages - interactive web applications with real-time data sync
+Live Apps and Live Pages - focused full documentation from the admin and developer portals
 
 ## Available Documentation
 

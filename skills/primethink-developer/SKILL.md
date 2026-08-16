@@ -1,6 +1,6 @@
 ---
 name: primethink-developer
-description: Build PrimeThink Live Apps (interactive HTML applications), Tasks (AI workflow instructions), and Manage SDK integrations. Use this skill whenever the user asks to create, modify, or debug anything for PrimeThink — including Live Apps, Live Pages, tasks, goals, data management with the pt API, or Obviously Manage integrations. Also trigger when the user mentions primethink.js, pt.add, pt.list, ptManage, ptManageUI, chatdb, entity names, or any PrimeThink-specific concept.
+description: Build PrimeThink Live Apps (both dynamic index.html apps and compiled React/Vite apps), Tasks, agents, CLI workflows, and Manage SDK integrations. Use this skill whenever the user asks to install the PrimeThink developer skill or to create, modify, build, deploy, or debug anything for PrimeThink — including pt install-developer-skill, Deep1 sandbox app development, pt live-app new, /documents/app deployment, Live Apps, Live Pages, tasks, goals, pt API data management, or Obviously Manage integrations. Also trigger for primethink.js, pt.add, pt.list, ptManage, ptManageUI, chatdb, entity names, or any PrimeThink-specific concept.
 ---
 
 # PrimeThink Developer
@@ -17,55 +17,78 @@ PrimeThink is an AI-powered team workspace at `app.primethink.ai`. Users chat wi
 - **Agents** — AI assistants powered by LLMs. Configurable with specific models, tools, and instructions.
 - **Documents & Collections** — files uploaded to chats, organized in collections for RAG and reference.
 
+## Installing or Updating This Skill
+
+When a user asks to install this skill, use the public CLI installer rather than downloading only `SKILL.md`:
+
+```bash
+pt install-developer-skill                       # ~/.claude/skills (default)
+pt install-developer-skill --project             # ./.claude/skills
+pt install-developer-skill --dir ~/.kiro/skills  # Kiro or custom parent directory
+pt install-developer-skill --ref TAG_OR_COMMIT   # reproducible source
+```
+
+The command recursively installs this complete directory from the public `primethink-app-templates` repository. It needs internet access but no PrimeThink token, GitHub login, or paid service. `--dir` names the parent skills directory; the installer appends `primethink-developer`.
+
+Do not overwrite an existing installation without the user's intent. Use `--force` only when they ask to update or replace it. Replacement is downloaded and staged before the old directory moves, and unsafe paths, duplicates, symbolic links, oversized content, and missing `SKILL.md` are rejected.
+
+Repository contributors editing the canonical checkout should run `./install.sh` instead; its symlinks ensure Kiro and Claude edits are saved back to the repository rather than a detached installed copy.
+
 ## When to Read Reference Files
 
 Based on what you're building, read the appropriate reference before writing code:
 
 | Building... | Read |
 |---|---|
-| **Anything** — before writing app code | `libraries/index.md` — ready-made libraries to copy instead of re-implementing |
-| Live App (HTML app in a chat) | `references/advanced-topics/live-apps/index.md` → then specific docs in `docs/` |
-| React Live App (single- or multi-page) | `libraries/index.md` (React section) + "React page type" below |
+| Installing or updating the developer skill | "Installing or Updating This Skill" above + `references/developer-guide/cli/docs/cli-reference.md` |
+| Dynamic/no-build app — before writing code | `libraries/index.md` — reusable modules to copy instead of re-implementing |
+| Choose dynamic vs compiled Live App | "Choose the Live App workflow" below |
+| Compiled app or Deep1 sandbox build | `references/developer-guide/compiled-live-apps.md` and generated template `README.md` |
+| PrimeThink CLI command/API details | `references/developer-guide/cli/index.md` → exact upstream docs in `docs/` |
+| Live App APIs and patterns | `references/advanced-topics/live-apps/index.md` → specific docs in `docs/` |
 | Task or Agent (AI workflow instructions) | `references/ai-automation/summary.md` |
+| User, admin, or developer feature outside the focused guides | `references/portals/{user,admin,developer}/index.md` |
 | Live App with Obviously Manage integration | `references/advanced-topics/live-apps/docs/primethink_manage.md` |
 | Obviously Manage UI components | `references/advanced-topics/live-apps/docs/primethink_manage_ui.md` |
 
 ### Reference Structure
 
-```
+```text
 references/
 ├── index.md                              # PrimeThink overview
-├── getting-started/summary.md            # Installation, setup, UI basics
-├── core-features/summary.md              # Documents, collections, groups
-├── ai-automation/summary.md              # Tasks, agents, LLMs, automation
-├── developer-guide/summary.md            # APIs, integrations, CLI
-└── advanced-topics/live-apps/
-    ├── index.md                          # Live Apps overview (read first)
-    └── docs/                             # Full documentation files
-        ├── Live-Apps.md                  # Core Live Apps guide
-        ├── Data-Management-API.md        # pt.add, pt.list, pt.edit, etc.
-        ├── Live-Apps-State-Management.md # State patterns
-        ├── primethink_manage.md          # Obviously Manage API wrapper
-        ├── primethink_manage_ui.md       # Obviously Manage UI components
-        └── ... (27 docs total)
+├── getting-started/summary.md            # User portal: setup and UI basics
+├── core-features/summary.md              # User + admin portal core features
+├── ai-automation/summary.md              # Admin + user portal agents/tasks
+├── developer-guide/
+│   ├── summary.md                        # Developer portal summary
+│   ├── compiled-live-apps.md             # Deep1 sandbox build/deploy workflow
+│   └── cli/
+│       ├── index.md                      # Generated CLI reference index
+│       └── docs/                         # Exact CLI reference/user guide/skill
+├── advanced-topics/live-apps/
+│   ├── index.md                          # Focused Live Apps overview
+│   └── docs/                             # Full relevant admin/developer docs
+└── portals/                              # Exact PR #1 portal mirrors
+    ├── user/{index.md,docs/}
+    ├── admin/{index.md,docs/}
+    └── developer/{index.md,docs/}
 
-libraries/                                # Copy-into-your-app code (not docs)
-├── index.md                              # Catalog: what to copy, when, how
-├── pt-*.js                               # 12 framework-agnostic modules
-└── ptr-*.js                              # 6 React modules (hooks + components)
+libraries/                                # Copy-into dynamic/no-build apps
+├── index.md
+├── pt-*.js
+└── ptr-*.js
 ```
 
-> `references/` is generated by `build_skill_references.py` from the docs source —
-> do not hand-edit it. `libraries/` and `SKILL.md` are maintained by hand.
+> Portal, focused Live App, and CLI copies under `references/` are generated by `build_skill_references.py`; do not hand-edit them. `references/developer-guide/compiled-live-apps.md`, `libraries/`, and `SKILL.md` are maintained by hand.
 
 Always read the relevant reference file — it contains the full API signatures, patterns, and examples you need.
 
 ## Reusable Libraries (check before writing code)
 
-`libraries/` holds 18 flat, dependency-light ES modules distilled from the recurring code
-across every published Live App. **Copy the files an app needs into its app folder** (next
-to `index.html` / `index.js`) and import them with sibling paths — no build step, no npm.
-Read `libraries/index.md` for the full catalog, exports and snippets.
+`libraries/` holds 18 flat, dependency-light ES modules for **dynamic/no-build** Live Apps.
+Copy the files an app needs beside `index.html` / `index.js`; they are not npm packages.
+For a compiled Vite template, follow its generated `README.md` and normal source imports instead.
+Read `libraries/index.md` for the dynamic-app catalog, exports, and snippets.
 
 ```
 pt-*.js   framework-agnostic (HTML apps and React apps)
@@ -95,31 +118,58 @@ Quick recipes: CRUD list app → `pt-data.js` + `ptr-hooks.js` + `ptr-ui.js` · 
 add `pt-ai.js` + `ptr-ai.js` · multi-page → `ptr-router.js` · editor → `ptr-editor.js` +
 `pt-markdown.js` · voice → `pt-audio.js` + `pt-speech.js`.
 
-## Page Types: HTML and React
+## Choose the Live App Workflow
 
-A Live App is deployed as files in the chat's `@app` folder; `page_type` tells the platform
-how to render the entry file.
+Choose before creating files:
+
+1. **Compiled full app (default for new substantial apps):** use `pt live-app new` with its default React + Vite + Tailwind + Flowbite template. This supports a normal nested source tree and npm dependencies. Build it, then deploy only the flat files inside `dist/`.
+2. **Dynamic/no-build app:** choose an HTML or React dynamic template when the app is small, must remain editable as deployed source, or the environment cannot run npm. These deploy `index.html` (or the documented dynamic entry files) directly and use the flat `libraries/` modules.
+3. **Existing app:** preserve its current model unless the user asks to migrate it. Do not mix platform-transpiled dynamic React assumptions with Vite/npm assumptions.
+
+### Deep1 sandbox workflow for compiled apps
+
+When a Deep1 agent is asked to build a full app, it must use the CLI rather than hand-creating a source tree:
+
+```bash
+# Use a new source directory in the sandbox, outside the deployment target.
+pt live-app new ./my-app
+cd ./my-app
+
+# Read README.md before executing generated code, then edit src/ as needed.
+npm install
+npm run build
+
+# Deploy the CONTENTS of dist/, not the source tree or dist directory.
+rm -rf /documents/app
+mkdir -p /documents/app
+cp -R dist/. /documents/app/
+```
+
+Before deployment, confirm `dist/index.html` exists and keep the output flat. The default template's build runs `scripts/verify-dist.mjs`, which rejects nested output and root-absolute asset URLs. Vite 8 requires Node `20.19+` or `22.12+`. The CLI itself intentionally does not run `npm install`, build commands, or generated code.
+
+Read `references/developer-guide/compiled-live-apps.md` for variants, safety constraints, custom catalogs, and the no-build deployment path.
+
+## Dynamic Page Types: HTML and React
+
+A dynamic Live App is deployed as source files in the chat's `@app` folder; `page_type` tells the platform how to render the entry file.
 
 - **`html`** (entry `canvas.html` / `index.html`) — vanilla JS; `pt` and Socket.IO are injected.
-- **`react`** (entry `index.js`) — JSX transpiled in the browser by Babel standalone.
-  React 18 + ReactDOM are **platform globals**; bare `import React from 'react'` does NOT work.
-  The app mounts itself into the platform-provided `<div id="root">`.
+- **`react`** (entry `index.js`) — JSX transpiled in the browser by Babel standalone. React 18 + ReactDOM are platform globals; bare `import React from 'react'` does not work.
 
-Multi-file rules (both types):
+Dynamic multi-file rules:
 
-- Extra `.js` / `.css` / `.json` / asset files sit **beside** the entry and resolve via the
-  injected `<base href="/api/v1/live/{chat}/app/">` — static `import './api.js'`, dynamic
-  `await import('./facts.js')` and `<link href="./styles.css">` all work.
-- **Only `index.js` gets the JSX transform.** Every other module must be plain JavaScript —
-  that is why the `ptr-*` libraries use `React.createElement` instead of JSX.
-- Deploy uploads **top-level files only** — keep the app folder flat, no subdirectories.
-- Tailwind is **not** injected: load a pinned build and set `darkMode: 'class'` (see `pt-boot.js`).
+- Extra `.js` / `.css` / `.json` / asset files resolve through the injected `<base href="/api/v1/live/{chat}/app/">`.
+- Only `index.js` gets the platform JSX transform. Other dynamic modules must be plain JavaScript.
+- The deployed artifact must be flat because the app uploader handles top-level files only.
+- Tailwind is not injected; load and pin the documented browser build.
+
+Compiled Vite apps are different: npm React is bundled during `npm run build`, source directories may be nested, the page type is **HTML**, and only the flat build output is copied to `/documents/app/`.
 
 ## Core Architecture (Quick Reference)
 
 ### The `pt` API
 
-Every Live App has the `pt` object auto-available (no imports needed). Tailwind CSS is not injected by the platform — each app declares and pins its own Tailwind version in its `<head>` (see `references/advanced-topics/live-apps/docs/Live-Apps-Tailwind-v4.md` for the required setup block).
+Every Live App receives the `pt` object from PrimeThink at runtime. Dynamic apps declare and pin their browser Tailwind build in `<head>`; compiled Vite apps bundle Tailwind during `npm run build`. See `references/advanced-topics/live-apps/docs/Live-Apps-Tailwind-v4.md` for the dynamic setup block.
 
 **Data operations:**
 
@@ -204,12 +254,12 @@ await pt.generateVoice({ text: '...', voice: 'alloy', folder: 'audio' });
 
 ### Live App Rules
 
-- An **HTML** app is a complete HTML file (DOCTYPE, `<html>`, `<head>`, `<body>`) or a body fragment; a **React** app is an `index.js` that mounts into `<div id="root">`
-- `pt` is pre-loaded — no imports needed; Tailwind must be declared and pinned by the app (`darkMode: 'class'`)
-- Always support dark mode: pair `bg-white` with `dark:bg-gray-800`, etc.
-- Use `escapeHtml()` before injecting user content into innerHTML (`libraries/pt-safe.js`); React escapes by default — just avoid `dangerouslySetInnerHTML`
-- Never use `localStorage` — use `pt.add/edit/list` for all state persistence (theme preference is the sole exception)
-- Keep the app folder flat; only `index.js` may contain JSX
+- Dynamic HTML apps deploy complete HTML; dynamic React apps use platform-transpiled `index.js`. Compiled React apps deploy the generated `dist/index.html` with page type **HTML**.
+- `window.pt` is injected by PrimeThink. Do not bundle `primethink.js`, add production credentials, call `pt.init()`, or install `pt` from npm.
+- Always support host-controlled dark mode.
+- Escape untrusted values before dynamic `innerHTML`; React escapes text by default, so avoid `dangerouslySetInnerHTML`.
+- Never use `localStorage` for app data; use `pt.add/edit/list` (theme preference is the sole exception where documented).
+- Keep the **deployment artifact** flat. Compiled source trees may be nested, but copy only top-level `dist/` contents to `/documents/app/`.
 
 ### Standard Init Pattern
 

@@ -15,4 +15,14 @@ pt live-app new ./my-app \
 
 ## Repository-owned skills
 
-The canonical `primethink-developer` skill lives at `skills/primethink-developer`. Run its `install.sh` once to link Kiro and Claude directly to the repository copy so future edits are saved here.
+The canonical `primethink-developer` skill lives at `skills/primethink-developer`.
+
+```bash
+# Normal installation for Claude Code
+pt install-developer-skill
+
+# Kiro or another compatible skills directory
+pt install-developer-skill --dir ~/.kiro/skills
+```
+
+The CLI downloads the complete public skill recursively. Repository contributors who need edits to save directly into this checkout should instead run `skills/primethink-developer/install.sh` once to link Kiro and Claude to the canonical source directory.

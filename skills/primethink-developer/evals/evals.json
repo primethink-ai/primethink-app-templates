@@ -1,0 +1,50 @@
+{
+  "skill_name": "primethink-developer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "You are a Deep1 coding agent working in a sandbox. Design a production-ready compiled React/Vite PrimeThink Live App named Incident Board. It must be scaffolded with the PrimeThink CLI, use pt CRUD to list/create/update incidents, subscribe to realtime document changes, support PrimeThink dark mode, and be deployed safely to /documents/app/. Produce a solution.md with exact terminal commands, a concise implementation outline, representative React code for the PrimeThink integration, validation checks, and deployment steps. Be explicit about which files are source files versus deployment artifacts.",
+      "expected_output": "A reference-backed compiled-app implementation and deployment guide using pt live-app new, npm build, flat dist contents, PrimeThink CRUD/realtime APIs, and dark mode.",
+      "files": [],
+      "expectations": [
+        "solution.md scaffolds Incident Board with pt live-app new, then explicitly reads the generated README before installing dependencies and running the build.",
+        "solution.md clearly distinguishes editable React/Vite source files (including src/) from generated dist/ deployment artifacts and states that source files are not deployed.",
+        "Representative React code uses window.pt and implements incident read/create/update with pt.list, pt.add, and pt.edit using merge mode or preserved existing data.",
+        "Representative React code subscribes with pt.onDocumentChanged, refreshes relevant document state in the callback, and invokes the returned unsubscribe function during React effect cleanup.",
+        "The UI demonstrates host-controlled dark mode with dark variants or equivalent host-class selectors and does not persist application or theme state in localStorage.",
+        "Validation commands check that the build succeeds, dist/index.html exists, generated asset URLs are not root-absolute, and the deployment artifact contains no nested directories.",
+        "Deployment replaces /documents/app only after a successful build and copies dist/. into it rather than deploying the dist directory or project source."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Build a no-build PrimeThink HTML Live App called Support Queue. Produce a complete index.html and a short README.md. The app must use window.pt to create, list, and update support tickets; render user-provided ticket text safely; react to document changes; receive chat messages; send a PrimeThink notification after a ticket is resolved; and follow the platform dark-mode convention. Explain the correct Live App page type and how to deploy it without npm or Vite.",
+      "expected_output": "A complete safe dynamic HTML Live App plus deployment notes covering pt CRUD, realtime events, message reception, notifications, dark mode, and page type.",
+      "files": [],
+      "expectations": [
+        "A complete standalone index.html and short README.md exist; they require no npm, Vite, JSX transform, or build step and use the platform-provided window.pt.",
+        "index.html provides controls and handlers to list, create, and update support_ticket records via pt.list, pt.add, and pt.edit, with edits using merge mode or preserving existing entity data.",
+        "All user-controlled ticket and message values are inserted with textContent/DOM properties or an explicit HTML-escaping helper; no unescaped user value reaches innerHTML.",
+        "index.html subscribes with pt.onDocumentChanged, updates visible state in the callback, and retains/calls the returned unsubscribe function when the page unloads.",
+        "A chat action sends with pt.addMessage and receives the corresponding task response with pt.waitForMessageReceived or pt.onMessageReceived, rendering it safely.",
+        "Resolving a ticket first persists resolved status with pt.edit and then calls pt.sendNotification or pt.sendNotificationToUsers with visible error handling.",
+        "The app supplies host-compatible dark styling, and README.md identifies page type html and deploys the flat source artifact directly to /documents/app/index.html without a dist folder."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Create an integration plan and representative implementation for a PrimeThink Live App that summarizes a matter, calls an agent tool directly, and lets the user export the summary to Obviously Manage through the PrimeThink Manage UI. Produce solution.md and integration.js. Include required browser scripts, initialization/error handling, pt.callToolDirect usage, ptManage or ptManageUI usage, and the relevant PrimeThink CLI commands for inspecting or managing the Live App. Distinguish what comes from admin Live App documentation, developer documentation, and CLI documentation.",
+      "expected_output": "A cross-portal implementation using direct tool calling and Obviously Manage libraries with correct script paths, error handling, and relevant CLI commands/source attribution.",
+      "files": [],
+      "expectations": [
+        "solution.md and integration.js both exist, and integration.js contains a user-triggered matter-summary flow with an Export to Manage action.",
+        "The implementation relies on injected window.pt and loads /static/primethink_manage_ui.js with load-failure handling; direct ptManage use also loads /static/primethink_manage.js and awaits ptManageReady.",
+        "Initialization waits for DOM readiness and validates required globals, while asynchronous tool and export operations use try/catch plus user-visible loading, success, and failure states.",
+        "integration.js calls pt.callToolDirect with a concrete case-sensitive tool name and explicit arguments, reads response.result (or handles task_id), and handles call errors.",
+        "Manage export uses ptManageUI.open with getContent, getTitle, onSuccess, and onError callbacks tied to the generated summary, or an equivalent user-facing ptManage export flow.",
+        "solution.md includes documented relevant CLI commands including pt live-app new and chat file inspection/management commands, without inventing Live App deploy/list commands.",
+        "solution.md has distinct Admin Live App, Developer, and CLI documentation attribution sections mapping APIs, implementation guidance, and commands to the correct source category."
+      ]
+    }
+  ]
+}
