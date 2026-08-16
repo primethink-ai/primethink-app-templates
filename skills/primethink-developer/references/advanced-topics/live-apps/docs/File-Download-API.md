@@ -9,7 +9,7 @@ For detailed information about file storage locations and access control, see [F
 ## Endpoint
 
 ```
-GET /api/v1/live_apps/{chat_id}/{document_path}
+GET /api/v1/live/{chat_id}/{document_path}
 ```
 
 This endpoint streams file content with proper MIME types for browser display and downloading.
@@ -17,7 +17,7 @@ This endpoint streams file content with proper MIME types for browser display an
 ### URL Structure
 
 ```
-https://api.example.com/api/v1/live_apps/{chat_id}/{document_path}
+https://api.example.com/api/v1/live/{chat_id}/{document_path}
                                          ↑                ↑
                                          |                |
                                     Chat UUID        File path/name
@@ -52,7 +52,7 @@ Files in the `@public` folder are accessible without authentication.
 
 **Request:**
 ```bash
-curl "https://api.example.com/api/v1/live_apps/c3d4e5f6-a7b8-4901-8def-123456789012/@public/brochure.pdf"
+curl "https://api.example.com/api/v1/live/c3d4e5f6-a7b8-4901-8def-123456789012/@public/brochure.pdf"
 ```
 
 **Response:**
@@ -77,7 +77,7 @@ When you provide just a filename, the system searches in priority order: `@publi
 **Request:**
 ```bash
 curl -H "Authorization: Bearer <token>" \
-  "https://api.example.com/api/v1/live_apps/c3d4e5f6-a7b8-4901-8def-123456789012/report.xlsx"
+  "https://api.example.com/api/v1/live/c3d4e5f6-a7b8-4901-8def-123456789012/report.xlsx"
 ```
 
 **Response:**
@@ -103,7 +103,7 @@ Nested paths skip the `@public` and `@liveapp` search and go directly to the cha
 **Request:**
 ```bash
 curl -H "Authorization: Bearer <token>" \
-  "https://api.example.com/api/v1/live_apps/c3d4e5f6-a7b8-4901-8def-123456789012/projects/2024/analysis.csv"
+  "https://api.example.com/api/v1/live/c3d4e5f6-a7b8-4901-8def-123456789012/projects/2024/analysis.csv"
 ```
 
 **Response:**
@@ -129,7 +129,7 @@ Files in the `@liveapp` folder require authentication but not chat membership.
 **Request:**
 ```bash
 curl -H "Authorization: Bearer <token>" \
-  "https://api.example.com/api/v1/live_apps/c3d4e5f6-a7b8-4901-8def-123456789012/@liveapp/template.json"
+  "https://api.example.com/api/v1/live/c3d4e5f6-a7b8-4901-8def-123456789012/@liveapp/template.json"
 ```
 
 **Response:**
@@ -155,7 +155,7 @@ Content-Disposition: inline; filename="template.json"
 
 **Request:**
 ```bash
-curl "https://api.example.com/api/v1/live_apps/c3d4e5f6-a7b8-4901-8def-123456789012/nonexistent.pdf"
+curl "https://api.example.com/api/v1/live/c3d4e5f6-a7b8-4901-8def-123456789012/nonexistent.pdf"
 ```
 
 **Response:**
@@ -172,7 +172,7 @@ Content-Type: application/json
 
 **Request:**
 ```bash
-curl "https://api.example.com/api/v1/live_apps/c3d4e5f6-a7b8-4901-8def-123456789012/private.docx"
+curl "https://api.example.com/api/v1/live/c3d4e5f6-a7b8-4901-8def-123456789012/private.docx"
 ```
 
 **Response:**
@@ -259,7 +259,7 @@ The session token is the short-lived JWT issued at login. Treat it as a secret w
 
 **Public File:**
 ```html
-<img src="https://api.example.com/api/v1/live_apps/{chat_id}/@public/logo.png" alt="Logo">
+<img src="https://api.example.com/api/v1/live/{chat_id}/@public/logo.png" alt="Logo">
 ```
 
 **Protected File (with JavaScript):**
@@ -272,7 +272,7 @@ async function downloadFile(chatId, filePath) {
   const token = getSessionToken();  // however your app holds the short-lived token
 
   const response = await fetch(
-    `https://api.example.com/api/v1/live_apps/${chatId}/${filePath}`,
+    `https://api.example.com/api/v1/live/${chatId}/${filePath}`,
     {
       headers: {
         'Authorization': `Bearer ${token}`
@@ -296,7 +296,7 @@ async function downloadFile(chatId, filePath) {
 **Display PDF in iframe:**
 ```html
 <iframe
-  src="https://api.example.com/api/v1/live_apps/{chat_id}/@public/document.pdf"
+  src="https://api.example.com/api/v1/live/{chat_id}/@public/document.pdf"
   width="100%"
   height="600px">
 </iframe>
@@ -357,7 +357,7 @@ The endpoint automatically detects and sets the correct MIME type:
 
 **Store:** `@public/brochure.pdf`
 
-**Access:** `https://api.example.com/api/v1/live_apps/{chat_id}/@public/brochure.pdf`
+**Access:** `https://api.example.com/api/v1/live/{chat_id}/@public/brochure.pdf`
 
 **Auth:** None required
 
@@ -365,7 +365,7 @@ The endpoint automatically detects and sets the correct MIME type:
 
 **Store:** `@liveapp/email-template.html`
 
-**Access:** `https://api.example.com/api/v1/live_apps/{chat_id}/@liveapp/email-template.html`
+**Access:** `https://api.example.com/api/v1/live/{chat_id}/@liveapp/email-template.html`
 
 **Auth:** Bearer token required
 
@@ -373,7 +373,7 @@ The endpoint automatically detects and sets the correct MIME type:
 
 **Store:** `attachments/2024/invoice.pdf`
 
-**Access:** `https://api.example.com/api/v1/live_apps/{chat_id}/attachments/2024/invoice.pdf`
+**Access:** `https://api.example.com/api/v1/live/{chat_id}/attachments/2024/invoice.pdf`
 
 **Auth:** Bearer token + chat membership required
 
@@ -384,7 +384,7 @@ The endpoint automatically detects and sets the correct MIME type:
 **Access from live app JavaScript:**
 ```javascript
 const response = await fetch(
-  `/api/v1/live_apps/${chatId}/@liveapp/config.json`,
+  `/api/v1/live/${chatId}/@liveapp/config.json`,
   { headers: { 'Authorization': `Bearer ${token}` }}
 );
 ```
@@ -399,7 +399,7 @@ const response = await fetch(
 async function downloadFile(chatId, filePath, authToken) {
   try {
     const response = await fetch(
-      `https://api.example.com/api/v1/live_apps/${chatId}/${filePath}`,
+      `https://api.example.com/api/v1/live/${chatId}/${filePath}`,
       {
         headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {}
       }

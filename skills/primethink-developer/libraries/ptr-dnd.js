@@ -85,7 +85,10 @@ export function reindexOrder(items, opts) {
         if (item == null || item.id == null) return;
         const data = {};
         data[field] = start + i * step;
-        payload.push({ id: item.id, data });
+        // merge:true is REQUIRED: the server's batch edit REPLACES the whole
+        // entity data unless the item explicitly asks to merge, so omitting it
+        // would wipe every field except the order index.
+        payload.push({ id: item.id, data, merge: true });
     });
     return payload;
 }
@@ -288,7 +291,9 @@ export function useDragBoard({ columns = [], items = [], onMove, columnKey = 'co
             const data = {};
             data[orderField] = i;
             if (String(idOf(it, idKey)) === String(itemId)) data[columnKey] = toColumn;
-            return { id: idOf(it, idKey), data };
+            // merge:true — same reason as reindexOrder: batch edit replaces
+            // entity data wholesale without it.
+            return { id: idOf(it, idKey), data, merge: true };
         });
 
         onMove && onMove({ itemId, from, to: toColumn, index: insertAt, items, updates });

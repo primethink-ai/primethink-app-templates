@@ -254,6 +254,10 @@ await pt.generateVoice({ text: '...', voice: 'alloy', folder: 'audio' });
 
 ### Live App Rules
 
+- **An "app" is an app, not a webpage.** When the user asks for an app, dashboard, or tool, build an interactive multi-view UI: an app shell (topbar or sidebar navigation) with separate views/routes — use `ptr-router.js` (hash-based, iframe-safe) for React or a view-switcher for HTML. A single long scrolling page is a landing page, not an app, and is the wrong deliverable for these requests.
+- **Never hand-roll PrimeThink API calls.** All data access goes through the injected `pt` global (directly or via `pt-data.js`/`ptr-hooks.js`). Do NOT invent REST endpoints (there is no `/api/chatdb/...`); do NOT `fetch` PrimeThink URLs by hand. If a helper doesn't exist in the libraries, check the references before writing any HTTP call.
+- **ChatDB works only inside the PrimeThink live view.** The `pt` runtime and its tokens exist only on the platform-served page. An app deployed to an external host (Cloudflare Pages, Netlify, ...) has NO `pt` and no way to authenticate — bundle demo data for external deploys, or keep data features live-view-only.
+- **No external font/CDN imports.** Do not `@import` Google Fonts or load libraries from CDNs in the deployed app: they break offline/filtered networks and third-party requests may hang the page. Use the system font stack, or self-host font files inside the app folder.
 - Dynamic HTML apps deploy complete HTML; dynamic React apps use platform-transpiled `index.js`. Compiled React apps deploy the generated `dist/index.html` with page type **HTML**.
 - `window.pt` is injected by PrimeThink. Do not bundle `primethink.js`, add production credentials, call `pt.init()`, or install `pt` from npm.
 - Always support host-controlled dark mode.
