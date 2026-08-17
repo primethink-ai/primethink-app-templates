@@ -1333,7 +1333,7 @@ The library unwraps the server's `{success, action, result}` envelope for you â€
 
 When files are attached via `addMessage`, the response includes the `download_url` for each document. You can also access files using the simpler path-based File Download API:
 
-For live apps: `/api/v1/live_apps/{chat_id}/{file_path}`
+For live apps: `/api/v1/live/{chat_id}/{file_path}`
 
 The file path can be extracted from the `document.name` or the attachment `path` fields. See [File Download API](File-Download-API.md) for complete details on downloading files by path.
 
@@ -3006,7 +3006,7 @@ pt.uploadFiles(formOrFormData, folder?, documentName?, attachmentMode?)
 
 After uploading files with `uploadFiles`, you can access them using the File Download API:
 
-For live apps: `/api/v1/live_apps/{chat_id}/{file_path}`
+For live apps: `/api/v1/live/{chat_id}/{file_path}`
 
 The `file_path` is the combination of the folder parameter you provided and the document name. For example, if you uploaded to `reports/2024`, the file path would be `reports/2024/filename.pdf`. See [File Download API](File-Download-API.md) for complete details.
 
@@ -3665,7 +3665,7 @@ For detailed information about file storage hierarchy and access control, see [F
 
 After saving a document, you can download it using the file path and the File Download API. The `download_url` in the response provides a UUID-based download link, but you can also use the simpler path-based download endpoint.
 
-For live apps, use: `/api/v1/live_apps/{chat_id}/{file_path}`
+For live apps, use: `/api/v1/live/{chat_id}/{file_path}`
 
 Where `file_path` is the folder and filename you used when saving. See [File Download API](File-Download-API.md) for details.
 

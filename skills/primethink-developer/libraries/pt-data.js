@@ -487,15 +487,14 @@ export function onEntitiesChanged(cb, opts = {}) {
 
     const unsubs = [];
     try {
-        if (names && names.length) {
-            names.forEach(n => {
-                const h = pt.onEntityChanged(handler, { entityName: n });
-                unsubs.push(typeof h === 'function' ? h : (h && h.unsubscribe));
-            });
-        } else {
-            const h = pt.onEntityChanged(handler);
-            unsubs.push(typeof h === 'function' ? h : (h && h.unsubscribe));
-        }
+        // ONE unfiltered subscription on purpose: the host's { entityName }
+        // filter drops every event that lacks entity_name, and the host only
+        // stamps entity_name on 'inserted' events — a filtered subscription
+        // would never see updates or deletes (other users' edits, AI edits).
+        // The handler above does the name filtering client-side for inserts
+        // and treats name-less update/delete events as a refresh trigger.
+        const h = pt.onEntityChanged(handler);
+        unsubs.push(typeof h === 'function' ? h : (h && h.unsubscribe));
     } catch (err) {
         console.error(MODULE + ' onEntitiesChanged: subscribe failed:', err);
     }

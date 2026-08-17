@@ -414,7 +414,14 @@ export function usePtCollection(entityName, options = {}) {
                 timer = setTimeout(() => { if (alive.current) refresh(); }, debounceMs);
             };
             try {
-                unsub = pt.onEntityChanged(debounced, { entityName });
+                // No host-side { entityName } filter: the host only stamps
+                // entity_name on 'inserted' events, so a filtered subscription
+                // misses updates/deletes (other users' and AI edits). Filter
+                // inserts client-side; name-less events always refresh.
+                unsub = pt.onEntityChanged((event) => {
+                    if (event && event.entity_name && event.entity_name !== entityName) return;
+                    debounced();
+                });
             } catch (e) {
                 // onEntityChanged unavailable — polling/refresh still works manually
                 console.warn('[ptr-hooks] onEntityChanged failed:', e);
@@ -608,7 +615,13 @@ export function usePtSingleton(entityName, defaults = {}) {
         let unsub = null;
         if (ptAvailable && typeof pt.onEntityChanged === 'function') {
             try {
-                unsub = pt.onEntityChanged(() => { if (alive.current) refresh(); }, { entityName });
+                // Unfiltered subscription — same reason as usePtCollection:
+                // update/delete events carry no entity_name and a host-side
+                // { entityName } filter would drop them.
+                unsub = pt.onEntityChanged((event) => {
+                    if (event && event.entity_name && event.entity_name !== entityName) return;
+                    if (alive.current) refresh();
+                });
             } catch (e) { /* ignore */ }
         }
         return () => {

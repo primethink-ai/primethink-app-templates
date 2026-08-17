@@ -481,7 +481,12 @@ export function onAiTaskChanged(entityName, cb) {
             } catch (err) {
                 console.error(MODULE + ' onAiTaskChanged handler failed:', err);
             }
-        }, { entityName: entityName });
+        });
+        // NOTE: deliberately NO { entityName } runtime filter — the host only
+        // stamps entity_name on 'inserted' events, so a filtered subscription
+        // never sees the UPDATED event that signals task completion. The
+        // handler above already fetches each entity and filters by
+        // task.entity_name client-side, which covers all event kinds.
     } catch (err) {
         console.error(MODULE + ' onAiTaskChanged subscribe failed:', err);
         return function () {};
