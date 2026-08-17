@@ -35,3 +35,12 @@ Start building in `src/App.jsx`. Tailwind and Flowbite React are already wired t
 `npm run build` creates `dist/` and runs `scripts/verify-dist.mjs`. The verifier requires flat output containing JavaScript and CSS with relative asset URLs. The Vite config preserves this through `base: './'`, `assetsDir: '.'`, and flat Rollup output names.
 
 PrimeThink injects and initializes `window.pt` at runtime. Do not add `primethink.js` as a dependency, bundle it, add credentials, or call `pt.init()`. Use Chat DB rather than `localStorage` for persistent data, retain the host-theme bridge and class-based dark variant, and clean up any PrimeThink subscriptions you add in React effects.
+
+## Learn how to build Live Apps
+
+This is an intentionally blank template — it ships wiring, not an app. To build
+on it, use the **primethink-developer** skill: read `SKILL.md` in your installed
+skills (in the PrimeThink sandbox: `/sandbox/skills/primethink-developer/SKILL.md`).
+It covers the injected `pt` API, ChatDB persistence (granular entities,
+seed-if-empty demo data), app-shell layout expectations, publishing, and the
+live-page refresh flow.
