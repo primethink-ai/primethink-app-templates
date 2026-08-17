@@ -255,7 +255,8 @@ await pt.generateVoice({ text: '...', voice: 'alloy', folder: 'audio' });
 ### Live App Rules
 
 - **An "app" is an app, not a webpage.** When the user asks for an app, dashboard, or tool, build an interactive multi-view UI: an app shell (topbar or sidebar navigation) with separate views/routes — use `ptr-router.js` (hash-based, iframe-safe) for React or a view-switcher for HTML. A single long scrolling page is a landing page, not an app, and is the wrong deliverable for these requests.
-- **Persist app state in ChatDB — in-memory demo data is a bug.** The template's `App.jsx` ships with working `window.pt` sample wiring (`pt.list`/`pt.add`): EXTEND it when you rewrite the app, never strip it. Hardcoded `useState`-only data means nothing survives a reload and the AI cannot read or edit the app's data. Even demo apps must seed their demo content through `pt.add` once and read it back with `pt.list` (seed-if-empty pattern). Static mockups with no persistence are acceptable ONLY when the user explicitly asks for one.
+- **Persist app state in ChatDB — in-memory demo data is a bug.** The template's `App.jsx` ships with working `window.pt` sample wiring (`pt.list`/`pt.add`): EXTEND it when you rewrite the app, never strip it. Hardcoded `useState`-only data means nothing survives a reload and the AI cannot read or edit the app's data. Static mockups with no persistence are acceptable ONLY when the user explicitly asks for one. See "Demo Data (seed-if-empty)" below for the required pattern.
+- **Granular entities, never a state blob.** One `entity_name` per domain type, one row per object (`umbrella`, `booking`, `menu_item`, ...). Do NOT stuff the whole app state into a single JSON singleton: the ChatDB panel shows entities, the AI edits individual rows, and `onEntityChanged` sync works per record — a blob defeats all three. Never create entities the app does not read (seeding "display copies" next to a blob is data duplication that silently drifts).
 - **Never hand-roll PrimeThink API calls.** All data access goes through the injected `pt` global (directly or via `pt-data.js`/`ptr-hooks.js`). Do NOT invent REST endpoints (there is no `/api/chatdb/...`); do NOT `fetch` PrimeThink URLs by hand. If a helper doesn't exist in the libraries, check the references before writing any HTTP call.
 - **ChatDB works only inside the PrimeThink live view.** The `pt` runtime and its tokens exist only on the platform-served page. An app deployed to an external host (Cloudflare Pages, Netlify, ...) has NO `pt` and no way to authenticate — bundle demo data for external deploys, or keep data features live-view-only.
 - **No external font/CDN imports.** Do not `@import` Google Fonts or load libraries from CDNs in the deployed app: they break offline/filtered networks and third-party requests may hang the page. Use the system font stack, or self-host font files inside the app folder.
@@ -265,6 +266,37 @@ await pt.generateVoice({ text: '...', voice: 'alloy', folder: 'audio' });
 - Escape untrusted values before dynamic `innerHTML`; React escapes text by default, so avoid `dangerouslySetInnerHTML`.
 - Never use `localStorage` for app data; use `pt.add/edit/list` (theme preference is the sole exception where documented).
 - Keep the **deployment artifact** flat. Compiled source trees may be nested, but copy only top-level `dist/` contents to `/documents/app/`.
+
+### Demo Data (seed-if-empty)
+
+When the user asks for a demo (or the app needs starter content), the DEMO
+DATA lives in the code ONLY as a seed constant. On startup the app checks
+ChatDB and copies the seed in once — after that, ChatDB is the single source
+of truth and every render reads from it. Never render from the constants after
+seeding, and never re-seed over existing data (a reload must not duplicate or
+reset user edits).
+
+```javascript
+const DEMO_DATA = {
+    umbrella:  [{ code: 'A1', zone: 'front', vip: false }, /* ... */],
+    menu_item: [{ name: 'Spritz', price: 7, kind: 'bar' }, /* ... */],
+};
+
+async function ensureDemoData() {
+    for (const [entityName, rows] of Object.entries(DEMO_DATA)) {
+        const existing = await pt.list({ entityNames: [entityName], limit: 1 });
+        const count = (existing?.entities ?? existing ?? []).length;
+        if (count === 0) {
+            await pt.batchAdd(rows.map(data => ({ entity_name: entityName, data })));
+        }
+    }
+}
+// init: await ensureDemoData(); then load everything with pt.list per entity.
+```
+
+An optional admin "Reset demo" action may delete all rows and re-run the seed
+— that is the ONLY path that overwrites existing data. On an external host
+(no `pt`), fall back to rendering `DEMO_DATA` read-only in memory.
 
 ### Standard Init Pattern
 
