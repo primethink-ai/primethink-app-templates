@@ -4,75 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
-  <title>PrimeThink HTML starter</title>
-  <style>
-    :root {
-      --paper: #f3f6f8;
-      --panel: #ffffff;
-      --ink: #172231;
-      --muted: #617083;
-      --line: #cbd5df;
-      --accent: #126e82;
-      --accent-strong: #0b5262;
-      --accent-soft: #d8f0f3;
-      --danger: #b42336;
-      --focus: #e5962d;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
-      color: var(--ink);
-      background: var(--paper);
-    }
-    :root.dark {
-      --paper: #0d141d;
-      --panel: #151f2b;
-      --ink: #eef5f7;
-      --muted: #a8b5c2;
-      --line: #344354;
-      --accent: #65c5d1;
-      --accent-strong: #8bd8e1;
-      --accent-soft: #153943;
-      --danger: #ff8fa0;
-      --focus: #ffbd66;
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--paper); }
-    button, input { font: inherit; }
-    button:not(:disabled) { cursor: pointer; }
-    button:focus-visible, input:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
-    .shell { width: min(760px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0; }
-    .masthead { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: end; margin-bottom: 28px; }
-    .eyebrow { margin: 0 0 10px; color: var(--accent-strong); font: 700 12px/1.2 ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; }
-    h1 { max-width: 620px; margin: 0; font-size: clamp(2rem, 7vw, 4.2rem); line-height: .95; letter-spacing: -.055em; }
-    .status { align-self: start; padding: 8px 10px; border: 1px solid var(--line); color: var(--muted); font: 700 11px/1.2 ui-monospace, monospace; white-space: nowrap; }
-    .status.connected { color: var(--accent-strong); border-color: var(--accent); background: var(--accent-soft); }
-    .composer { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 16px; background: var(--accent); }
-    .composer input { min-width: 0; border: 0; padding: 13px 14px; color: #172231; background: #fff; }
-    .composer button { border: 1px solid #fff; padding: 12px 18px; color: #fff; background: transparent; font-weight: 800; }
-    .composer button:hover:not(:disabled) { color: var(--accent-strong); background: #fff; }
-    .composer button:disabled, .composer input:disabled { opacity: .6; }
-    .board { border: 1px solid var(--line); border-top: 0; background: var(--panel); }
-    .board-head { display: flex; justify-content: space-between; gap: 16px; padding: 16px 18px; border-bottom: 1px solid var(--line); }
-    .board-head h2 { margin: 0; font-size: 1rem; }
-    .count { color: var(--muted); font: 700 12px/1.5 ui-monospace, monospace; }
-    .message { margin: 0; padding: 42px 18px; color: var(--muted); text-align: center; }
-    .error { color: var(--danger); }
-    ul { margin: 0; padding: 0; list-style: none; }
-    li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 16px 18px; border-top: 1px solid var(--line); }
-    li:first-child { border-top: 0; }
-    li input { margin-top: 4px; accent-color: var(--accent); }
-    .task-text { margin: 0; overflow-wrap: anywhere; line-height: 1.5; }
-    .task-text.done { color: var(--muted); text-decoration: line-through; }
-    .record { margin: 5px 0 0; color: var(--muted); font: 600 10px/1.3 ui-monospace, monospace; text-transform: uppercase; }
-    .delete { border: 0; padding: 5px; color: var(--muted); background: transparent; font-size: 12px; font-weight: 700; }
-    .delete:hover:not(:disabled) { color: var(--danger); }
-    .footnote { color: var(--muted); font-size: 12px; line-height: 1.6; }
-    code { color: var(--accent-strong); }
-    [hidden] { display: none !important; }
-    @media (max-width: 580px) {
-      .shell { padding: 28px 0; }
-      .masthead { grid-template-columns: 1fr; }
-      .composer { grid-template-columns: 1fr; }
-    }
-  </style>
+  <title>PrimeThink Live App</title>
+  <!-- PrimeThink host theme bridge. Keep this when adding light/dark styles. -->
   <script>
     (function () {
       function apply(theme) {
@@ -81,173 +14,19 @@
         document.documentElement.classList.toggle('light', !dark);
       }
       var forced = new URLSearchParams(location.search).get('theme');
-      apply(forced || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
-      addEventListener('message', function (event) {
+      apply(forced || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+      window.addEventListener('message', function (event) {
         if (event.data && event.data.type === 'pt:theme') apply(event.data.theme);
       });
     })();
   </script>
 </head>
 <body>
-  <main class="shell">
-    <header class="masthead">
-      <div>
-        <p class="eyebrow">PrimeThink / field notes</p>
-        <h1>Keep the next move visible.</h1>
-      </div>
-      <span id="status" class="status">Checking platform…</span>
-    </header>
-
-    <form id="taskForm" class="composer">
-      <label for="taskInput" hidden>New action</label>
-      <input id="taskInput" maxlength="240" autocomplete="off" required placeholder="Write one concrete next move">
-      <button id="addButton" type="submit">Add action</button>
-    </form>
-
-    <section class="board" aria-labelledby="boardTitle">
-      <header class="board-head">
-        <h2 id="boardTitle">Action register</h2>
-        <span id="count" class="count">—</span>
-      </header>
-      <p id="message" class="message">Loading actions…</p>
-      <ul id="taskList" aria-live="polite" hidden></ul>
-    </section>
-    <p class="footnote">Template entity: <code>html_template_action</code>. Rename it before shipping.</p>
-  </main>
+  <main id="app"></main>
 
   <script>
-    (function () {
-      'use strict';
-      // TODO: Give your production app a unique entity name.
-      var ENTITY_NAME = 'html_template_action';
-      var tasks = [];
-      var refreshTimer;
-      var unsubscribe;
-      var form = document.getElementById('taskForm');
-      var input = document.getElementById('taskInput');
-      var button = document.getElementById('addButton');
-      var status = document.getElementById('status');
-      var count = document.getElementById('count');
-      var message = document.getElementById('message');
-      var list = document.getElementById('taskList');
-
-      function normalize(result) {
-        return Array.isArray(result) ? result : (result && Array.isArray(result.entities) ? result.entities : []);
-      }
-
-      function setBusy(busy) {
-        input.disabled = busy || !window.pt;
-        button.disabled = busy || !window.pt;
-        button.textContent = busy ? 'Adding…' : 'Add action';
-      }
-
-      function render() {
-        list.replaceChildren();
-        count.textContent = tasks.length + (tasks.length === 1 ? ' action' : ' actions');
-        message.hidden = tasks.length > 0;
-        list.hidden = tasks.length === 0;
-        message.className = 'message';
-        message.textContent = window.pt ? 'No actions yet. Add the first one above.' : 'Open this app inside PrimeThink to use chat data.';
-
-        tasks.forEach(function (task) {
-          var row = document.createElement('li');
-          var toggle = document.createElement('input');
-          var copy = document.createElement('div');
-          var text = document.createElement('p');
-          var meta = document.createElement('p');
-          var remove = document.createElement('button');
-          var done = task.data && task.data.completed === true;
-
-          toggle.type = 'checkbox';
-          toggle.checked = done;
-          toggle.setAttribute('aria-label', done ? 'Mark action active' : 'Mark action complete');
-          toggle.addEventListener('change', function () { updateTask(task, !done); });
-          text.className = 'task-text' + (done ? ' done' : '');
-          text.textContent = (task.data && task.data.text) || 'Untitled action';
-          meta.className = 'record';
-          meta.textContent = (done ? 'Complete' : 'Active') + ' · record #' + task.id;
-          remove.className = 'delete';
-          remove.type = 'button';
-          remove.textContent = 'Delete';
-          remove.addEventListener('click', function () { deleteTask(task); });
-          copy.append(text, meta);
-          row.append(toggle, copy, remove);
-          list.append(row);
-        });
-      }
-
-      async function loadTasks() {
-        if (!window.pt) {
-          status.textContent = '○ Open inside PrimeThink';
-          setBusy(false);
-          render();
-          return;
-        }
-        status.textContent = '● Platform connected';
-        status.classList.add('connected');
-        setBusy(false);
-        try {
-          var result = await window.pt.list({ entityNames: [ENTITY_NAME], limit: 100 });
-          tasks = normalize(result)
-            .filter(function (item) { return item.entity_name === ENTITY_NAME; })
-            .sort(function (a, b) { return new Date(b.created_at || 0) - new Date(a.created_at || 0); });
-          render();
-        } catch (error) {
-          console.error('Could not load actions:', error);
-          message.hidden = false;
-          list.hidden = true;
-          message.className = 'message error';
-          message.textContent = 'Actions could not be loaded. Refresh the app to try again.';
-        }
-      }
-
-      async function updateTask(task, completed) {
-        try {
-          await window.pt.edit(task.id, { completed: completed }, true);
-          await loadTasks();
-        } catch (error) {
-          console.error('Could not update action:', error);
-        }
-      }
-
-      async function deleteTask(task) {
-        if (!window.confirm('Delete this action? This cannot be undone.')) return;
-        try {
-          await window.pt.delete(task.id);
-          await loadTasks();
-        } catch (error) {
-          console.error('Could not delete action:', error);
-        }
-      }
-
-      form.addEventListener('submit', async function (event) {
-        event.preventDefault();
-        var text = input.value.trim();
-        if (!text || !window.pt) return;
-        setBusy(true);
-        try {
-          await window.pt.add(ENTITY_NAME, { text: text, completed: false });
-          input.value = '';
-          await loadTasks();
-        } catch (error) {
-          console.error('Could not add action:', error);
-        } finally {
-          setBusy(false);
-        }
-      });
-
-      loadTasks();
-      if (window.pt && window.pt.onEntityChanged) {
-        unsubscribe = window.pt.onEntityChanged(function () {
-          clearTimeout(refreshTimer);
-          refreshTimer = setTimeout(loadTasks, 250);
-        });
-      }
-      addEventListener('beforeunload', function () {
-        clearTimeout(refreshTimer);
-        if (typeof unsubscribe === 'function') unsubscribe();
-      });
-    })();
+    // PrimeThink injects and initializes window.pt before the app runs.
+    // Build the application from this blank canvas.
   </script>
 </body>
 </html>

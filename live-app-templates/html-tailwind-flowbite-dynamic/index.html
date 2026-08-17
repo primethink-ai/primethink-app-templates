@@ -4,24 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
-  <title>PrimeThink HTML starter</title>
+  <title>PrimeThink Live App</title>
 
-  <!-- Tailwind CSS v4 — PrimeThink's documented, tested browser-build pin. -->
+  <!-- Tailwind CSS v4 — PrimeThink's documented browser-build pin. -->
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
-
   <style type="text/tailwindcss">
-    /* PrimeThink uses a class-based theme. Keep this variant in every Live App. */
     @custom-variant dark (&:where(.dark, .dark *));
-
-    @theme {
-      --color-signal-50: #eff8ff;
-      --color-signal-100: #dbeffe;
-      --color-signal-500: #1788d4;
-      --color-signal-600: #0870b7;
-      --color-signal-700: #095a92;
-      --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
-      --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-    }
 
     @layer base {
       button:not(:disabled), [role="button"]:not(:disabled) {
@@ -30,7 +18,10 @@
     }
   </style>
 
-  <!-- Apply the host theme before first paint and follow live host changes. -->
+  <!-- Flowbite core — exact version pin. -->
+  <link href="https://cdn.jsdelivr.net/npm/flowbite@4.0.2/dist/flowbite.min.css" rel="stylesheet">
+
+  <!-- PrimeThink host theme bridge. Keep this when adding light/dark styles. -->
   <script>
     (function () {
       function apply(theme) {
@@ -38,268 +29,23 @@
         document.documentElement.classList.toggle('dark', dark);
         document.documentElement.classList.toggle('light', !dark);
       }
-
       var forced = new URLSearchParams(location.search).get('theme');
       apply(forced || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
-
       window.addEventListener('message', function (event) {
         if (event.data && event.data.type === 'pt:theme') apply(event.data.theme);
       });
     })();
   </script>
 </head>
-<body class="min-h-screen bg-slate-100 text-slate-950 antialiased dark:bg-slate-950 dark:text-slate-100">
-  <main class="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
-    <header class="mb-8 flex flex-col gap-5 border-b border-slate-300 pb-7 dark:border-slate-700 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <div class="mb-3 flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.18em] text-signal-700 dark:text-sky-300">
-          <span class="inline-block size-2 bg-signal-500" aria-hidden="true"></span>
-          PrimeThink live queue
-        </div>
-        <h1 class="max-w-xl text-3xl font-black tracking-tight text-slate-950 dark:text-white sm:text-5xl">
-          One clear place for what comes next.
-        </h1>
-      </div>
-      <div id="connectionBadge" class="w-fit border border-amber-300 bg-amber-50 px-3 py-2 font-mono text-xs font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-        Checking platform…
-      </div>
-    </header>
+<body>
+  <main id="app"></main>
 
-    <section aria-labelledby="add-heading" class="mb-6 bg-signal-600 p-5 text-white shadow-sm sm:p-6">
-      <h2 id="add-heading" class="mb-1 text-lg font-bold">Capture a task</h2>
-      <p class="mb-4 text-sm text-sky-100">Saved to this chat and shared with everyone who can access it.</p>
-      <form id="taskForm" class="flex flex-col gap-3 sm:flex-row">
-        <label for="taskInput" class="sr-only">Task description</label>
-        <input
-          id="taskInput"
-          name="task"
-          type="text"
-          maxlength="240"
-          required
-          autocomplete="off"
-          placeholder="What needs attention?"
-          class="min-w-0 grow border border-white/40 bg-white px-4 py-3 text-slate-950 outline-hidden placeholder:text-slate-500 focus:border-white focus:ring-2 focus:ring-white/50 disabled:opacity-60 dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-400"
-        >
-        <button id="addButton" type="submit" class="shrink-0 bg-slate-950 px-5 py-3 font-semibold text-white transition hover:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-signal-600 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
-          Add to queue
-        </button>
-      </form>
-    </section>
-
-    <section aria-labelledby="queue-heading" class="border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-      <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-700 sm:px-6">
-        <h2 id="queue-heading" class="text-lg font-bold">Current queue</h2>
-        <span id="taskCount" class="font-mono text-xs font-semibold text-slate-500 dark:text-slate-400">—</span>
-      </div>
-
-      <div id="loadingState" class="space-y-3 p-5 sm:p-6" aria-label="Loading tasks">
-        <div class="h-14 animate-pulse bg-slate-100 dark:bg-slate-800"></div>
-        <div class="h-14 animate-pulse bg-slate-100 dark:bg-slate-800"></div>
-      </div>
-
-      <div id="emptyState" class="hidden px-5 py-14 text-center sm:px-6">
-        <p class="text-lg font-bold text-slate-800 dark:text-slate-100">The queue is clear.</p>
-        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Add the next useful thing above.</p>
-      </div>
-
-      <ul id="taskList" class="hidden divide-y divide-slate-200 dark:divide-slate-700" aria-live="polite"></ul>
-    </section>
-
-    <p class="mt-5 text-xs leading-5 text-slate-500 dark:text-slate-400">
-      Template entity: <code class="font-mono text-slate-700 dark:text-slate-300">template_task</code>. Rename it before shipping your app.
-    </p>
-  </main>
-
-  <div id="toast" role="status" aria-live="polite" class="pointer-events-none fixed inset-x-4 bottom-4 hidden border px-4 py-3 text-sm font-semibold shadow-lg sm:left-auto sm:w-96"></div>
-
-  <script>
-    (function () {
-      'use strict';
-
-      // TODO: Give your production app a unique entity name.
-      var ENTITY_NAME = 'template_task';
-      var state = { tasks: [], loading: true, saving: false };
-      var refreshTimer = null;
-      var unsubscribe = null;
-
-      var elements = {
-        form: document.getElementById('taskForm'),
-        input: document.getElementById('taskInput'),
-        addButton: document.getElementById('addButton'),
-        badge: document.getElementById('connectionBadge'),
-        count: document.getElementById('taskCount'),
-        loading: document.getElementById('loadingState'),
-        empty: document.getElementById('emptyState'),
-        list: document.getElementById('taskList'),
-        toast: document.getElementById('toast')
-      };
-
-      function escapeHtml(value) {
-        return String(value ?? '').replace(/[&<>"']/g, function (character) {
-          return {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#39;'
-          }[character];
-        });
-      }
-
-      function normalizeList(result) {
-        return Array.isArray(result) ? result : (result && Array.isArray(result.entities) ? result.entities : []);
-      }
-
-      function setConnection(connected) {
-        elements.badge.textContent = connected ? '● Platform connected' : '○ Open inside PrimeThink';
-        elements.badge.className = connected
-          ? 'w-fit border border-emerald-300 bg-emerald-50 px-3 py-2 font-mono text-xs font-semibold text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
-          : 'w-fit border border-amber-300 bg-amber-50 px-3 py-2 font-mono text-xs font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200';
-      }
-
-      function setSaving(saving) {
-        state.saving = saving;
-        elements.input.disabled = saving;
-        elements.addButton.disabled = saving;
-        elements.addButton.textContent = saving ? 'Adding…' : 'Add to queue';
-      }
-
-      function showToast(message, type) {
-        elements.toast.textContent = message;
-        elements.toast.className = type === 'error'
-          ? 'pointer-events-none fixed inset-x-4 bottom-4 border border-rose-300 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-900 shadow-lg dark:border-rose-800 dark:bg-rose-950 dark:text-rose-100 sm:left-auto sm:w-96'
-          : 'pointer-events-none fixed inset-x-4 bottom-4 border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900 shadow-lg dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-100 sm:left-auto sm:w-96';
-        window.setTimeout(function () { elements.toast.classList.add('hidden'); }, 3200);
-      }
-
-      function render() {
-        elements.loading.classList.toggle('hidden', !state.loading);
-        elements.empty.classList.toggle('hidden', state.loading || state.tasks.length > 0);
-        elements.list.classList.toggle('hidden', state.loading || state.tasks.length === 0);
-        elements.count.textContent = state.loading ? '—' : state.tasks.length + (state.tasks.length === 1 ? ' item' : ' items');
-
-        if (state.loading || state.tasks.length === 0) {
-          elements.list.innerHTML = '';
-          return;
-        }
-
-        elements.list.innerHTML = state.tasks.map(function (task) {
-          var done = task.data && task.data.completed === true;
-          var text = escapeHtml(task.data && task.data.text);
-          return '<li class="group flex items-start gap-3 px-5 py-4 sm:px-6" data-task-id="' + task.id + '">' +
-            '<input type="checkbox" aria-label="Mark task complete" data-action="toggle" class="mt-1 size-4 shrink-0 rounded-xs border-slate-300 text-signal-600 focus:ring-2 focus:ring-signal-500 dark:border-slate-600 dark:bg-slate-800" ' + (done ? 'checked' : '') + '>' +
-            '<span class="min-w-0 grow break-words text-sm leading-6 ' + (done ? 'text-slate-400 line-through dark:text-slate-500' : 'text-slate-800 dark:text-slate-100') + '">' + text + '</span>' +
-            '<button type="button" data-action="delete" aria-label="Delete task" class="shrink-0 px-2 py-1 text-xs font-bold text-slate-400 transition hover:text-rose-600 focus:outline-hidden focus:ring-2 focus:ring-rose-500 dark:text-slate-500 dark:hover:text-rose-400">Delete</button>' +
-          '</li>';
-        }).join('');
-      }
-
-      async function loadTasks() {
-        if (!window.pt) return;
-        state.loading = true;
-        render();
-        try {
-          var result = await window.pt.list({ entityNames: [ENTITY_NAME], limit: 100 });
-          state.tasks = normalizeList(result)
-            .filter(function (entity) { return entity.entity_name === ENTITY_NAME; })
-            .sort(function (a, b) { return new Date(b.created_at || 0) - new Date(a.created_at || 0); });
-        } catch (error) {
-          console.error('Could not load tasks:', error);
-          showToast('Tasks could not be loaded. Try refreshing the app.', 'error');
-        } finally {
-          state.loading = false;
-          render();
-        }
-      }
-
-      async function addTask(event) {
-        event.preventDefault();
-        var text = elements.input.value.trim();
-        if (!text || state.saving || !window.pt) return;
-
-        setSaving(true);
-        try {
-          await window.pt.add(ENTITY_NAME, { text: text, completed: false });
-          elements.input.value = '';
-          await loadTasks();
-          showToast('Added to the queue.', 'success');
-        } catch (error) {
-          console.error('Could not add task:', error);
-          showToast('The task was not saved. Try again.', 'error');
-        } finally {
-          setSaving(false);
-          elements.input.focus();
-        }
-      }
-
-      async function toggleTask(taskId) {
-        var task = state.tasks.find(function (item) { return item.id === taskId; });
-        if (!task || !window.pt) return;
-        try {
-          await window.pt.edit(taskId, { completed: !(task.data && task.data.completed === true) }, true);
-          await loadTasks();
-        } catch (error) {
-          console.error('Could not update task:', error);
-          showToast('The task was not updated. Try again.', 'error');
-          await loadTasks();
-        }
-      }
-
-      async function deleteTask(taskId) {
-        if (!window.pt || !window.confirm('Delete this task? This cannot be undone.')) return;
-        try {
-          await window.pt.delete(taskId);
-          await loadTasks();
-          showToast('Task deleted.', 'success');
-        } catch (error) {
-          console.error('Could not delete task:', error);
-          showToast('The task was not deleted. Try again.', 'error');
-        }
-      }
-
-      function scheduleRefresh() {
-        window.clearTimeout(refreshTimer);
-        refreshTimer = window.setTimeout(loadTasks, 250);
-      }
-
-      function handleListAction(event) {
-        var control = event.target.closest('[data-action]');
-        var row = event.target.closest('[data-task-id]');
-        if (!control || !row) return;
-        var taskId = Number(row.dataset.taskId);
-        if (control.dataset.action === 'delete' && event.type === 'click') deleteTask(taskId);
-        if (control.dataset.action === 'toggle' && event.type === 'change') toggleTask(taskId);
-      }
-
-      async function init() {
-        var connected = Boolean(window.pt);
-        setConnection(connected);
-        elements.form.addEventListener('submit', addTask);
-        elements.list.addEventListener('click', handleListAction);
-        elements.list.addEventListener('change', handleListAction);
-
-        if (!connected) {
-          state.loading = false;
-          render();
-          showToast('This template needs the PrimeThink runtime to save data.', 'error');
-          return;
-        }
-
-        await loadTasks();
-        if (typeof window.pt.onEntityChanged === 'function') {
-          unsubscribe = window.pt.onEntityChanged(scheduleRefresh);
-        }
-      }
-
-      window.addEventListener('beforeunload', function () {
-        if (typeof unsubscribe === 'function') unsubscribe();
-        window.clearTimeout(refreshTimer);
-      });
-
-      document.addEventListener('DOMContentLoaded', init);
-    })();
-  </script>
-  <!-- Flowbite core components — exact version pin. Initialize data-attribute components after dynamic renders. -->
+  <!-- Load Flowbite before application code that uses its components. -->
   <script src="https://cdn.jsdelivr.net/npm/flowbite@4.0.2/dist/flowbite.min.js"></script>
+  <script>
+    // PrimeThink injects and initializes window.pt before the app runs.
+    // Build the application from this blank Tailwind + Flowbite canvas.
+    // Call initFlowbite() after dynamically inserting data-attribute components.
+  </script>
 </body>
 </html>

@@ -1,10 +1,11 @@
 # primethink-app-template
+
 Template catalog used by `pt live-app new` to create PrimeThink Live Apps.
 
-The six valid React/HTML and Tailwind/Flowbite combinations are listed in [`live-app-templates/manifest.json`](live-app-templates/manifest.json). Flowbite requires Tailwind. See [`live-app-templates/README.md`](live-app-templates/README.md) for each starter's runtime, build, and deployment model.
+The six valid React/HTML and Tailwind/Flowbite combinations are listed in [`live-app-templates/manifest.json`](live-app-templates/manifest.json). Every starter is an intentionally blank canvas with only its selected stack and PrimeThink deployment wiring retained. Flowbite requires Tailwind. See [`live-app-templates/README.md`](live-app-templates/README.md) for each starter's runtime, build, and deployment model.
 
 ```bash
-# Default React + Tailwind + Flowbite starter
+# Default blank React + Tailwind + Flowbite starter
 pt live-app new ./my-app
 
 # Pin this catalog for reproducible scaffolding

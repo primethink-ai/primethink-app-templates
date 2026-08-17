@@ -4,22 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
-  <title>PrimeThink browser React starter</title>
+  <title>PrimeThink Live App</title>
 
-  <!-- Tailwind CSS v4 — PrimeThink's documented, tested browser-build pin. -->
+  <!-- Tailwind CSS v4 — PrimeThink's documented browser-build pin. -->
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
   <style type="text/tailwindcss">
     @custom-variant dark (&:where(.dark, .dark *));
-
-    @theme {
-      --color-coral-50: #fff4ed;
-      --color-coral-100: #ffe5d4;
-      --color-coral-500: #f36f45;
-      --color-coral-600: #dc512b;
-      --color-ink: #172033;
-      --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
-      --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-    }
 
     @layer base {
       button:not(:disabled), [role="button"]:not(:disabled) {
@@ -28,7 +18,7 @@
     }
   </style>
 
-  <!-- Apply the PrimeThink host theme before first paint. -->
+  <!-- PrimeThink host theme bridge. Keep this when adding light/dark styles. -->
   <script>
     (function () {
       function apply(theme) {
@@ -44,7 +34,6 @@
     })();
   </script>
 
-  <!-- Exact browser dependency pins; HTM provides JSX-like templates without Babel. -->
   <script type="importmap">
     {
       "imports": {
@@ -55,260 +44,23 @@
     }
   </script>
 </head>
-<body class="min-h-screen bg-[#f4f7fb] text-ink antialiased dark:bg-slate-950 dark:text-slate-100">
-  <div id="root">
-    <div class="grid min-h-screen place-items-center p-6 text-sm text-slate-500 dark:text-slate-400">Loading app…</div>
-  </div>
+<body>
+  <div id="root"></div>
 
   <script type="module">
-    import React, { useCallback, useEffect, useMemo, useState } from 'react';
+    import React from 'react';
     import { createRoot } from 'react-dom/client';
     import htm from 'htm';
 
+    // HTM is available when JSX-like templates are useful without a build step.
     const html = htm.bind(React.createElement);
-
-    // TODO: Replace with a unique entity name before publishing your app.
-    const ENTITY_NAME = 'react_template_note';
-
-    function normalizeList(result) {
-      return Array.isArray(result) ? result : (Array.isArray(result?.entities) ? result.entities : []);
-    }
-
-    function EmptyIcon() {
-      return html`
-        <svg viewBox="0 0 48 48" className="mx-auto size-12 text-coral-500" fill="none" aria-hidden="true">
-          <path d="M10 9.5h22l6 6V39H10V9.5Z" stroke="currentColor" strokeWidth="2.5"/>
-          <path d="M32 9.5V16h6M17 23h14M17 29h10" stroke="currentColor" strokeWidth="2.5"/>
-        </svg>
-      `;
-    }
-
-    function NoteRow({ note, onToggle, onDelete, busy }) {
-      const done = note.data?.completed === true;
-      return html`
-        <li className="grid grid-cols-[auto_1fr_auto] items-start gap-3 border-t border-slate-200 px-5 py-4 first:border-t-0 dark:border-slate-700 sm:px-6">
-          <input
-            type="checkbox"
-            checked=${done}
-            disabled=${busy}
-            onChange=${() => onToggle(note)}
-            aria-label=${done ? 'Mark note active' : 'Mark note complete'}
-            className="mt-1 size-4 rounded-xs border-slate-300 text-coral-600 focus:ring-2 focus:ring-coral-500 dark:border-slate-600 dark:bg-slate-800"
-          />
-          <div className="min-w-0">
-            <p className=${`break-words text-sm leading-6 ${done ? 'text-slate-400 line-through dark:text-slate-500' : 'text-slate-800 dark:text-slate-100'}`}>
-              ${note.data?.text || 'Untitled note'}
-            </p>
-            <p className="mt-1 font-mono text-[11px] uppercase tracking-wide text-slate-400 dark:text-slate-500">
-              ${done ? 'Filed' : 'Active'} · #${note.id}
-            </p>
-          </div>
-          <button
-            type="button"
-            disabled=${busy}
-            onClick=${() => onDelete(note)}
-            className="px-2 py-1 text-xs font-bold text-slate-400 transition hover:text-rose-600 focus:outline-hidden focus:ring-2 focus:ring-rose-500 disabled:opacity-50 dark:text-slate-500 dark:hover:text-rose-400"
-          >
-            Delete
-          </button>
-        </li>
-      `;
-    }
+    void html;
 
     function App() {
-      const [notes, setNotes] = useState([]);
-      const [text, setText] = useState('');
-      const [loading, setLoading] = useState(true);
-      const [busyId, setBusyId] = useState(null);
-      const [saving, setSaving] = useState(false);
-      const [message, setMessage] = useState(null);
-      const connected = Boolean(window.pt);
-
-      const loadNotes = useCallback(async ({ quiet = false } = {}) => {
-        if (!window.pt) {
-          setLoading(false);
-          return;
-        }
-        if (!quiet) setLoading(true);
-        try {
-          const result = await window.pt.list({ entityNames: [ENTITY_NAME], limit: 100 });
-          const next = normalizeList(result)
-            .filter((entity) => entity.entity_name === ENTITY_NAME)
-            .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-          setNotes(next);
-        } catch (error) {
-          console.error('Could not load notes:', error);
-          setMessage({ type: 'error', text: 'Notes could not be loaded. Refresh the app to try again.' });
-        } finally {
-          setLoading(false);
-        }
-      }, []);
-
-      useEffect(() => {
-        loadNotes();
-        if (!window.pt?.onEntityChanged) return undefined;
-
-        let timer;
-        const unsubscribe = window.pt.onEntityChanged(() => {
-          window.clearTimeout(timer);
-          timer = window.setTimeout(() => loadNotes({ quiet: true }), 250);
-        });
-
-        return () => {
-          window.clearTimeout(timer);
-          if (typeof unsubscribe === 'function') unsubscribe();
-        };
-      }, [loadNotes]);
-
-      useEffect(() => {
-        if (!message) return undefined;
-        const timer = window.setTimeout(() => setMessage(null), 3500);
-        return () => window.clearTimeout(timer);
-      }, [message]);
-
-      const counts = useMemo(() => ({
-        total: notes.length,
-        active: notes.filter((note) => note.data?.completed !== true).length
-      }), [notes]);
-
-      async function addNote(event) {
-        event.preventDefault();
-        const cleanText = text.trim();
-        if (!cleanText || !window.pt || saving) return;
-        setSaving(true);
-        try {
-          await window.pt.add(ENTITY_NAME, { text: cleanText, completed: false });
-          setText('');
-          setMessage({ type: 'success', text: 'Note added to this chat.' });
-          await loadNotes({ quiet: true });
-        } catch (error) {
-          console.error('Could not add note:', error);
-          setMessage({ type: 'error', text: 'The note was not saved. Try again.' });
-        } finally {
-          setSaving(false);
-        }
-      }
-
-      async function toggleNote(note) {
-        if (!window.pt) return;
-        setBusyId(note.id);
-        try {
-          await window.pt.edit(note.id, { completed: note.data?.completed !== true }, true);
-          await loadNotes({ quiet: true });
-        } catch (error) {
-          console.error('Could not update note:', error);
-          setMessage({ type: 'error', text: 'The note was not updated. Try again.' });
-        } finally {
-          setBusyId(null);
-        }
-      }
-
-      async function deleteNote(note) {
-        if (!window.pt || !window.confirm('Delete this note? This cannot be undone.')) return;
-        setBusyId(note.id);
-        try {
-          await window.pt.delete(note.id);
-          setMessage({ type: 'success', text: 'Note deleted.' });
-          await loadNotes({ quiet: true });
-        } catch (error) {
-          console.error('Could not delete note:', error);
-          setMessage({ type: 'error', text: 'The note was not deleted. Try again.' });
-        } finally {
-          setBusyId(null);
-        }
-      }
-
-      return html`
-        <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
-          <header className="mb-6 overflow-hidden border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-            <div className="grid gap-8 px-6 py-7 sm:grid-cols-[1fr_auto] sm:items-end sm:px-8 sm:py-9">
-              <div>
-                <p className="mb-3 font-mono text-xs font-bold uppercase tracking-[0.2em] text-coral-600 dark:text-orange-300">React · one file · no build</p>
-                <h1 className="max-w-2xl text-4xl font-black leading-[0.95] tracking-[-0.04em] text-ink dark:text-white sm:text-6xl">Keep the thought.<br/><span className="text-coral-600 dark:text-orange-300">Lose the clutter.</span></h1>
-              </div>
-              <div className="grid grid-cols-2 gap-px bg-slate-200 dark:bg-slate-700">
-                <div className="bg-slate-50 px-5 py-4 dark:bg-slate-800">
-                  <strong className="block text-2xl font-black">${counts.active}</strong>
-                  <span className="font-mono text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400">Active</span>
-                </div>
-                <div className="bg-slate-50 px-5 py-4 dark:bg-slate-800">
-                  <strong className="block text-2xl font-black">${counts.total}</strong>
-                  <span className="font-mono text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400">Total</span>
-                </div>
-              </div>
-            </div>
-            <div className=${`border-t px-6 py-3 font-mono text-xs font-semibold dark:border-slate-700 sm:px-8 ${connected ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' : 'border-amber-200 bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-200'}`}>
-              ${connected ? '● PrimeThink data connected' : '○ Open inside PrimeThink to connect data'}
-            </div>
-          </header>
-
-          <section className="grid gap-6 md:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
-            <form onSubmit=${addNote} className="h-fit border border-slate-300 bg-ink p-5 text-white shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-6">
-              <p className="mb-1 text-lg font-extrabold">Add a note</p>
-              <p className="mb-5 text-sm leading-5 text-slate-300">Short, useful, shared with this chat.</p>
-              <label htmlFor="noteText" className="mb-2 block font-mono text-[11px] font-semibold uppercase tracking-wide text-slate-300">Note text</label>
-              <textarea
-                id="noteText"
-                value=${text}
-                onChange=${(event) => setText(event.target.value)}
-                disabled=${!connected || saving}
-                maxLength="360"
-                rows="5"
-                required
-                placeholder="Capture one useful thought…"
-                className="w-full resize-y border border-slate-600 bg-slate-800 px-3 py-3 text-sm leading-6 text-white outline-hidden placeholder:text-slate-400 focus:border-coral-500 focus:ring-2 focus:ring-coral-500 disabled:opacity-60 dark:bg-slate-950"
-              ></textarea>
-              <div className="mt-3 flex items-center justify-between gap-3">
-                <span className="font-mono text-[10px] text-slate-400">${text.length}/360</span>
-                <button type="submit" disabled=${!connected || saving || !text.trim()} className="bg-coral-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-coral-600 focus:outline-hidden focus:ring-2 focus:ring-orange-300 focus:ring-offset-2 focus:ring-offset-ink disabled:cursor-not-allowed disabled:opacity-50">
-                  ${saving ? 'Saving…' : 'Save note'}
-                </button>
-              </div>
-            </form>
-
-            <section aria-labelledby="notes-heading" className="overflow-hidden border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-              <div className="flex items-center justify-between px-5 py-4 sm:px-6">
-                <h2 id="notes-heading" className="text-lg font-extrabold">Shared notes</h2>
-                <span className="font-mono text-[11px] uppercase tracking-wide text-slate-400">Newest first</span>
-              </div>
-
-              ${loading && html`
-                <div className="space-y-3 border-t border-slate-200 p-5 dark:border-slate-700 sm:p-6" aria-label="Loading notes">
-                  <div className="h-16 animate-pulse bg-slate-100 dark:bg-slate-800"></div>
-                  <div className="h-16 animate-pulse bg-slate-100 dark:bg-slate-800"></div>
-                </div>
-              `}
-
-              ${!loading && notes.length === 0 && html`
-                <div className="border-t border-slate-200 px-5 py-14 text-center dark:border-slate-700 sm:px-6">
-                  <${EmptyIcon} />
-                  <p className="mt-3 font-bold text-slate-800 dark:text-white">No notes yet.</p>
-                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">The first useful thought can start here.</p>
-                </div>
-              `}
-
-              ${!loading && notes.length > 0 && html`
-                <ul aria-live="polite">
-                  ${notes.map((note) => html`<${NoteRow} key=${note.id} note=${note} busy=${busyId === note.id} onToggle=${toggleNote} onDelete=${deleteNote} />`)}
-                </ul>
-              `}
-            </section>
-          </section>
-
-          <p className="mt-5 text-xs leading-5 text-slate-500 dark:text-slate-400">
-            Template entity: <code className="font-mono text-slate-700 dark:text-slate-300">${ENTITY_NAME}</code>. Rename it before publishing.
-          </p>
-
-          ${message && html`
-            <div role="status" aria-live="polite" className=${`fixed inset-x-4 bottom-4 border px-4 py-3 text-sm font-semibold shadow-lg sm:left-auto sm:w-96 ${message.type === 'error' ? 'border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-100' : 'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-100'}`}>
-              ${message.text}
-            </div>
-          `}
-        </main>
-      `;
+      return null;
     }
 
-    createRoot(document.getElementById('root')).render(html`<${App} />`);
+    createRoot(document.getElementById('root')).render(React.createElement(App));
   </script>
 </body>
 </html>

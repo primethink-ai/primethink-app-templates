@@ -1,6 +1,6 @@
 # PrimeThink Live App templates
 
-Six starter configurations for PrimeThink Live Apps. Each sample is a small persistent, real-time CRUD app intended to show the platform integration points rather than prescribe a product design.
+Six intentionally blank starter configurations for PrimeThink Live Apps. Every template renders an empty page/root and avoids sample interfaces, entities, application patterns, colors, layout, and content. This gives developers and app-generating LLMs a neutral canvas while preserving only the selected stack and PrimeThink deployment wiring.
 
 | Template | Framework | Tailwind | Flowbite | Build step | Deploy as |
 |---|---|---:|---:|---|---|
@@ -34,16 +34,15 @@ Flowbite requires Tailwind, so Flowbite-without-Tailwind combinations are intent
 
 ## Version policy
 
-Versions were checked against npm and official setup documentation on 2026-08-13. The Vite project pins the then-current stable npm versions. The dynamic templates intentionally use PrimeThink's documented/tested `@tailwindcss/browser@4.1.11` pin rather than the latest npm Tailwind release.
+Versions were checked against npm and official setup documentation on 2026-08-13. The Vite project pins the then-current stable npm versions. Dynamic templates intentionally use PrimeThink's documented/tested `@tailwindcss/browser@4.1.11` pin.
 
-## Shared PrimeThink conventions
+## Shared conventions
 
-- `window.pt` is injected and initialized by PrimeThink; it is not bundled.
-- Application data uses Chat DB entities, never `localStorage`.
-- Partial edits use merge mode.
-- Every app follows PrimeThink's host-controlled light/dark theme.
-- Real-time listeners are debounced and cleaned up.
-- Deployed files are flat and use relative asset URLs.
-- User/entity content is escaped by vanilla HTML or rendered through React's default escaping.
+- Each starter is deliberately visually and behaviorally empty; create the application from scratch.
+- Selected framework and dependency wiring remains available without example component markup.
+- `window.pt` is injected and initialized by PrimeThink; do not import `primethink.js` or call `pt.init()`.
+- Theme-capable starters retain the host-controlled class bridge and `pt:theme` listener.
+- Persistent application data should use Chat DB, never `localStorage`.
+- Deployed files remain flat and use relative asset URLs where a build is required.
 
-Read each template's README before deploying it.
+Read the selected template's README for its runtime, build, and deployment model.
