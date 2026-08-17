@@ -267,6 +267,27 @@ await pt.generateVoice({ text: '...', voice: 'alloy', folder: 'audio' });
 - Never use `localStorage` for app data; use `pt.add/edit/list` (theme preference is the sole exception where documented).
 - Keep the **deployment artifact** flat. Compiled source trees may be nested, but copy only top-level `dist/` contents to `/documents/app/`.
 
+### Project Memory (AGENTS.md + chat memo)
+
+Treat every live-app project as something another agent (or you, next week,
+with no conversation history) must pick up cold.
+
+- **`AGENTS.md` at the project root** (e.g. `/sandbox/lido-app/AGENTS.md`) —
+  the project's own CLAUDE.md-style map. Create it right after scaffolding and
+  keep it current as the app evolves:
+  - what the app does (features, views/routes, admin vs user areas)
+  - file structure (which file owns what)
+  - ChatDB entity names WITH their data shapes
+  - commands: build, publish (`publish_sandbox_path` + `clean_destination`),
+    external deploys (e.g. wrangler project name)
+  - conventions and decisions (theme, libraries copied into `app/lib/`, ...)
+- **`/chat/memo.md`** — the chat-level pointer that survives even when the
+  sandbox is not provisioned: project path, stack, entity list, open items.
+- **Returning to an existing project: read `AGENTS.md` FIRST**, before
+  re-reading sources. Trust it for what it covers; verify only what you are
+  about to change. Update both files whenever features, structure, or entities
+  change — a stale map is worse than none.
+
 ### Demo Data (seed-if-empty)
 
 When the user asks for a demo (or the app needs starter content), the DEMO
