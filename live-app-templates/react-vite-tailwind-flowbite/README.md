@@ -1,6 +1,6 @@
-# Full React + Vite + Tailwind + Flowbite Live App
+# React + Vite + Tailwind + Flowbite Live App
 
-A production-build PrimeThink Live App starter using current pinned npm releases.
+An intentionally blank PrimeThink Live App canvas with a production build pipeline. `App` returns `null`: no sample interface, content, entities, colors, layout, or application behavior is predefined.
 
 ## Stack
 
@@ -13,7 +13,7 @@ A production-build PrimeThink Live App starter using current pinned npm releases
 | Flowbite | 4.0.2 |
 | Flowbite React | 0.12.17 |
 
-Vite 8 requires Node `20.19+` or `22.12+`. Exact versions are used in `package.json`; `npm install` records the full transitive dependency graph in `package-lock.json`.
+Vite 8 requires Node `20.19+` or `22.12+`. Versions are pinned in `package.json`, and `package-lock.json` records the transitive dependency graph.
 
 ## Commands
 
@@ -24,33 +24,14 @@ npm run build
 npm run preview
 ```
 
-`npm run build` creates `dist/` and immediately runs `scripts/verify-dist.mjs`. The verifier fails if the output has nested directories, is missing JS/CSS, or contains root-absolute asset URLs.
+Start building in `src/App.jsx`. Tailwind and Flowbite React are already wired through `src/index.css` and `vite.config.js`, but the blank app imports no UI components until you choose to use them.
 
 ## PrimeThink deployment
 
-1. Rename `ENTITY_NAME` (`vite_template_decision`) in `src/App.jsx`.
-2. Run `npm run build`.
-3. Create a PrimeThink Live App with page type **HTML**.
-4. Upload the **top-level files inside `dist/`**, not the source project and not the `dist` folder itself.
+1. Run `npm run build`.
+2. Create a PrimeThink Live App with page type **HTML**.
+3. Upload the **top-level files inside `dist/`**, not the source project or the `dist` directory itself.
 
-The Vite config intentionally uses `base: './'`, `assetsDir: '.'`, and flat Rollup output names because PrimeThink's app uploader handles top-level files only.
+`npm run build` creates `dist/` and runs `scripts/verify-dist.mjs`. The verifier requires flat output containing JavaScript and CSS with relative asset URLs. The Vite config preserves this through `base: './'`, `assetsDir: '.'`, and flat Rollup output names.
 
-PrimeThink injects and initializes `window.pt` at runtime. It is not an npm dependency and must not be bundled, mocked with production credentials, or initialized with hard-coded tokens.
-
-## Flowbite choices
-
-- `flowbite-react` supplies the React components used in `src/App.jsx`.
-- `flowbite` is also installed for templates that later need core data-attribute components.
-- The setup follows Flowbite React's current Vite plugin pattern and Tailwind v4 CSS plugin.
-- React components manage their own lifecycle. If you add core Flowbite data-attribute markup dynamically, import and call `initFlowbite()` after the relevant React commit and clean up component instances.
-
-## PrimeThink rules retained
-
-- Host-controlled, class-based dark mode with live `pt:theme` updates
-- No `localStorage` for app data
-- Merge mode for partial `pt.edit` calls
-- Real-time subscription cleanup in React effects
-- Server-side entity filtering and bounded queries
-- No `dangerouslySetInnerHTML` for chat data
-
-A local Vite preview renders the interface but cannot persist data because `window.pt` exists only in the PrimeThink runtime.
+PrimeThink injects and initializes `window.pt` at runtime. Do not add `primethink.js` as a dependency, bundle it, add credentials, or call `pt.init()`. Use Chat DB rather than `localStorage` for persistent data, retain the host-theme bridge and class-based dark variant, and clean up any PrimeThink subscriptions you add in React effects.
