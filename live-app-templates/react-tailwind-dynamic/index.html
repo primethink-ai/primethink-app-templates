@@ -60,7 +60,21 @@
       return null;
     }
 
-    createRoot(document.getElementById('root')).render(React.createElement(App));
+    class RootErrorBoundary extends React.Component {
+      constructor(props) { super(props); this.state = { error: null }; }
+      static getDerivedStateFromError(error) { return { error }; }
+      render() {
+        if (this.state.error) {
+          return React.createElement('pre', { style: { padding: '2rem', whiteSpace: 'pre-wrap' } },
+            'The app hit a rendering error\n\n' + String(this.state.error && (this.state.error.message || this.state.error)));
+        }
+        return this.props.children;
+      }
+    }
+
+    createRoot(document.getElementById('root')).render(
+      React.createElement(RootErrorBoundary, null, React.createElement(App))
+    );
   </script>
 </body>
 </html>
