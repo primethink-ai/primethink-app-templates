@@ -264,7 +264,7 @@ await pt.generateVoice({ text: '...', voice: 'alloy', folder: 'audio' });
 - **Keep the template's root error boundary.** The react starters wrap `<App />` in a `RootErrorBoundary` (main.jsx / index.html) so a render error shows a readable message instead of a black page — never remove it, and keep it when restructuring the entry point.
 - Dynamic HTML apps deploy complete HTML; dynamic React apps use platform-transpiled `index.js`. Compiled React apps deploy the generated `dist/index.html` with page type **HTML**.
 - `window.pt` is injected by PrimeThink. Do not bundle `primethink.js`, add production credentials, call `pt.init()`, or install `pt` from npm.
-- Always support host-controlled dark mode.
+- **Host-controlled theme — follow the PrimeThink setting, not the OS.** The host forces the theme via a `?theme=dark|light` URL param plus live `pt:theme` postMessage; apply it as a `dark`/`light` class on `<html>`. Use the class-based dark strategy — `@custom-variant dark (&:where(.dark, .dark *))` (Tailwind v4) or `darkMode: 'class'` (v3) — so `dark:` variants follow that class, NOT `prefers-color-scheme`. Never default the app to `'system'`: an app that tracks the laptop's OS renders dark while PrimeThink is in light mode and ignores the user's theme. See `references/advanced-topics/live-apps/docs/Live-Apps-Tailwind-v4.md`.
 - Escape untrusted values before dynamic `innerHTML`; React escapes text by default, so avoid `dangerouslySetInnerHTML`.
 - Never use `localStorage` for app data; use `pt.add/edit/list` (theme preference is the sole exception where documented).
 - Keep the **deployment artifact** flat. Compiled source trees may be nested, but copy only top-level `dist/` contents to `/documents/app/`.
@@ -337,8 +337,61 @@ document.addEventListener('DOMContentLoaded', async () => {
 1. **No localStorage** — all state goes through `pt.add/edit/list` (chat database). Cross-device, persistent, AI-accessible.
 2. **Always spread on edit** — `pt.edit(id, { ...entity.data, newField: val })` or use merge mode `pt.edit(id, data, true)`.
 3. **Cache members** — call `pt.getChatMembers()` once at init, not in loops.
-4. **Dark mode** — every color class needs a `dark:` counterpart.
+4. **Dark mode** — every color class needs a `dark:` counterpart, and the theme must follow the host (class-based dark + `?theme=`/`pt:theme` bootstrap), never the OS `prefers-color-scheme`.
 5. **XSS prevention** — always `escapeHtml()` user content before innerHTML.
 6. **Server-side filtering** — use `filters:` in `pt.list()`, not client-side `.filter()`.
 7. **Debounce saves** — 1s debounce for frequent state updates.
 8. **waitForMessageReceived** — use this instead of polling for AI responses.
+
+## Final Verification Checklist (run before telling the user the app is done)
+
+Every rule below already appears above. The bugs that reach users are almost never
+unknown rules — they are known rules that were never re-checked at the end. Treat this
+as a **hard completion gate**: do not report the app as finished until every box is
+verified, and verify the **runtime** items by actually loading the deployed app in the
+live view — not by reading the code (the build passes on all of these).
+
+**Must observe at runtime (load the deployed app and click through it):**
+
+- [ ] **Every view and modal renders — no React error #130.** Open each route/modal,
+  *including the ones you just added* (e.g. "New Task"). #130 ("Element type is invalid:
+  got `undefined`") means a component resolved to `undefined`. #1 cause: flowbite-react
+  dot-notation (`Modal.Header`, `Table.Cell`, `Toast.Toggle`) — 0.12+ is FLAT exports only
+  (`ModalHeader`, `TableCell`, `ToastToggle`). The build does NOT catch this; it crashes
+  only when that component first renders. Also rule out any other undefined/misspelled import.
+- [ ] **Theme follows the PrimeThink setting, NOT the OS.** With PrimeThink in light mode
+  the app must render light even when the laptop's OS is dark (test `?theme=light` and
+  `?theme=dark`). If it tracks the OS instead, the class-based dark strategy or theme
+  bootstrap is missing: you need `@custom-variant dark (&:where(.dark, .dark *))` (v4) or
+  `darkMode: 'class'` (v3) AND the bootstrap that applies the `dark`/`light` class from the
+  host `?theme=` param + `pt:theme` postMessage. The default must be "follow the host,"
+  never `'system'`/`prefers-color-scheme`.
+- [ ] **Data survives a reload.** Create something, refresh — it is still there. If it
+  vanished, state is in-memory (`useState` only) instead of ChatDB.
+
+**Code review before deploy:**
+
+- [ ] **All app data goes through `pt` (ChatDB), never `localStorage`** (the theme
+  preference is the only permitted localStorage key). No invented REST endpoints, no
+  hand-rolled `fetch` to PrimeThink URLs.
+- [ ] **Granular entities — one `entity_name` per type, one row per object, not a state
+  blob.** Every entity the app writes is one it also reads.
+- [ ] **Demo/seed data is seed-if-empty:** seeded once, never re-seeded over existing rows,
+  and every render reads from ChatDB — not from the seed constant.
+- [ ] **It is an app, not a landing page:** shell + navigation across separate views/routes.
+- [ ] **Root error boundary still wraps `<App />`** (readable message instead of a black page).
+- [ ] **No external font/CDN imports** beyond the pinned Tailwind build.
+- [ ] **`pt.edit` spreads existing data** (`{ ...entity.data, ... }`) or uses merge mode.
+- [ ] **Untrusted values escaped before `innerHTML`** (React text is safe; avoid
+  `dangerouslySetInnerHTML`).
+
+**Deployment:**
+
+- [ ] **Compiled apps built with relative asset paths** (Vite `base: './'`), `dist/index.html`
+  exists, `verify-dist` passed, and only the flat contents of `dist/` were copied to
+  `/documents/app/` (`clean_destination` to drop stale bundles).
+- [ ] **`AGENTS.md` and `/chat/memo.md` updated** with any new views, entities, or commands.
+
+If any box fails, fix it and re-verify. **Do not report completion with a known failing item** —
+"it builds" is not "it works": #130 and the theme trap both pass the build and only surface
+when a human opens the app.
