@@ -1478,7 +1478,7 @@ async function testErrorHandling() {
 - [ ] Choose appropriate pattern: Upload-Then-Add for automation, Add-Then-Update for interactive UIs
 - [ ] Use `waitForMessageReceived` for clean async/await AI response handling
 - [ ] Use `waitForDocumentReady` only for silent uploads (`uploadFiles`) when you need extracted text
-- [ ] Remember: `addMessage` with attachments processes files immediately - no `waitForDocumentReady` needed
+- [ ] Remember: PrimeThink coordinates `addMessage` attachment extraction internally - no client-side `waitForDocumentReady` needed
 - [ ] Use `onDocumentChanged` for batch upload progress tracking
 - [ ] Cache generated documents (PDF/DOCX) by entity ID to avoid regenerating on repeated requests
 
@@ -1488,12 +1488,12 @@ async function testErrorHandling() {
 
 Understanding when you need `waitForDocumentReady()` depends on your upload method:
 
-| Upload Method | AI Processes Immediately | Need waitForDocumentReady |
-|---------------|-------------------------|---------------------------|
-| `pt.addMessage(formData, message)` | ✅ Yes | ❌ No |
-| `pt.uploadFiles(form)` | ❌ No | ✅ Yes (for text extraction) |
+| Upload Method | Extraction coordination | Need `waitForDocumentReady()` in your app |
+|---------------|-------------------------|---------------------------------------------|
+| `pt.addMessage(formData, message)` | PrimeThink waits internally before the AI responds | ❌ No |
+| `pt.uploadFiles(form)` | Your app waits if it needs extracted text | ✅ Yes (for text extraction) |
 
-**Key insight:** When using `addMessage()` with attachments, files are sent directly to the AI with your message. The AI processes them immediately, so you only need `waitForMessageReceived()` - not `waitForDocumentReady()`.
+**Key insight:** When using `addMessage()` with attachments, PrimeThink coordinates queued text extraction internally before the AI responds. You only need `waitForMessageReceived()`, not `waitForDocumentReady()`. If extraction times out or produces no readable text, the AI still receives the attachment's basic file information.
 
 ### Upload with AI Analysis (No waitForDocumentReady Needed)
 
@@ -1504,10 +1504,10 @@ async function uploadAndAnalyze(file, instructions) {
     const formData = new FormData();
     formData.append('files', file);
 
-    // Files are sent with the message - AI processes them immediately
+    // PrimeThink coordinates extraction while handling the message
     const result = await pt.addMessage(formData, instructions);
 
-    // Only wait for AI response - no waitForDocumentReady needed!
+    // Only wait for the AI response - PrimeThink handles extraction coordination
     const response = await pt.waitForMessageReceived(result.task_id, {
         timeout: 120000  // 2 minutes for complex analysis
     });
@@ -2448,6 +2448,34 @@ When implementing fire-and-forget in a new app:
 - [ ] GOAL.md updated with task-handling instructions
 - [ ] Batch entity used when generating multiple items
 - [ ] Metadata preserved in batch for fallback rendering (defense against AI ignoring merge)
+
+## Final Verification Before Publishing
+
+A successful build proves only that the source can be compiled. Before declaring a Live App complete, load the deployed app in the PrimeThink live view and verify its behavior. Treat this checklist as a completion gate: if an item fails, fix it and repeat the relevant checks.
+
+### Runtime checks
+
+- [ ] Open every route, view, modal, drawer, and recently changed interaction; components that are not initially visible can still fail only when first rendered.
+- [ ] Check the browser console and the page itself for render errors. A React root error boundary should remain in place, but a displayed boundary message is still a failed test.
+- [ ] Test `?theme=light` while the operating system uses dark mode, and `?theme=dark` while it uses light mode. The app must follow the PrimeThink host setting and live `pt:theme` changes rather than the OS preference.
+- [ ] Create or edit data, reload the app, and confirm the changes remain. Data that disappears on reload is being kept only in memory instead of ChatDB.
+- [ ] When the app supports real-time collaboration, open it in a second tab and confirm changes propagate in both directions.
+
+### Code review
+
+- [ ] Persist application data through the injected `pt` API, not `localStorage`, embedded credentials, or hand-written requests to invented PrimeThink endpoints.
+- [ ] Use granular domain entities and ensure demo data is initialized once without overwriting existing rows. Every entity representation the app writes should also be one it reads.
+- [ ] Preserve fields during partial updates by using merge mode or by sending a complete replacement data object.
+- [ ] Escape untrusted values before inserting them through `innerHTML`; avoid `dangerouslySetInnerHTML` in React.
+- [ ] Keep the generated React root error boundary when restructuring the entry point.
+- [ ] Pin required browser or package dependencies to tested versions rather than floating versions.
+
+### Deployment checks
+
+- [ ] Follow the generated template's page type and entry-file instructions.
+- [ ] For compiled apps, run the production build and template verifier, confirm `dist/index.html` exists, and verify that asset URLs are relative.
+- [ ] Deploy only the flat build output required by PrimeThink and remove stale files from earlier deployments.
+- [ ] Perform the runtime checks above against the final PrimeThink-hosted artifact, not only a local preview.
 
 ## Next Steps
 

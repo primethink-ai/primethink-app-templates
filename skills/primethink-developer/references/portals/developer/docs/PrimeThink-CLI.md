@@ -16,7 +16,9 @@ The PrimeThink CLI is a powerful command-line tool that allows you to interact w
 - Upload, download, and sync files with chats and collections
 - Manage chats end to end: create, read messages, archive, delete
 - Create, update, and manage agents (virtual assistants)
-- Create, update, version, duplicate, and publish tasks — including scheduled tasks
+- Create, update, version, duplicate, and manage task visibility — including scheduled tasks
+- Publish and test conventional task projects from version-controlled directories
+- Build, publish, synchronize, and run browser tests against Live Apps
 - Export a task's config to a git-friendly JSON file and re-import it in another environment
 - Search documents, chats, collections, and messages semantically
 - Generate AI images from text prompts
@@ -118,6 +120,125 @@ pt task actions
 ```
 
 If you see a list of available actions, you're all set!
+
+## Live App Project Workflows
+
+### Scaffold a Live App
+
+Use `pt live-app new` to create a local project from PrimeThink's public template catalog. Scaffolding downloads public template files and does not call the PrimeThink API, so it does not require a token or configured profile.
+
+```bash
+# Default: React + Vite + Tailwind + Flowbite
+pt live-app new ./my-app
+
+# No-build HTML + Tailwind
+pt live-app new ./my-html-app --framework html --no-flowbite
+
+# No-build React without Tailwind or Flowbite
+pt live-app new ./my-react-app --no-tailwind --no-flowbite
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--framework react\|html` | `react` | Select React or HTML |
+| `--tailwind` / `--no-tailwind` | `--tailwind` | Include or exclude Tailwind CSS |
+| `--flowbite` / `--no-flowbite` | `--flowbite` | Include or exclude Flowbite; Flowbite requires Tailwind |
+
+The six supported starters are intentionally blank canvases. They retain only the selected framework and dependencies plus required PrimeThink wiring, such as the host-theme bridge and deployment configuration. They do not include a sample interface, entities, colors, layout, or application behavior. Build the UI and ChatDB data layer for your application rather than expecting sample CRUD code from the template.
+
+!!! important
+    Read the generated `README.md` before building or deploying. The default Vite project has a build step and deploys the files inside `dist/`; no-build templates deploy their generated HTML entry file directly. Preserve the generated PrimeThink deployment and host-theme wiring.
+
+### Install the Live App developer skill
+
+Generated template READMEs direct developers and compatible coding agents to the complete `primethink-developer` skill for the injected `pt` API, ChatDB patterns, reusable libraries, deployment, and other Live App conventions. Install it in the scope used by your coding agent:
+
+```bash
+pt install-developer-skill                       # ~/.claude/skills (default)
+pt install-developer-skill --project             # ./.claude/skills
+pt install-developer-skill --dir ~/.kiro/skills  # custom skills directory
+```
+
+The installer downloads the complete skill from the public PrimeThink templates repository, including its references and reusable libraries. It does not require a PrimeThink token. An existing installation is not overwritten unless you explicitly pass `--force`.
+
+`pt install-developer-skill` is distinct from `pt install-skill`: the developer skill covers building PrimeThink Live Apps and integrations, while the CLI skill teaches compatible agents the general CLI command map and workflows.
+
+### Publish a Live App task
+
+`pt live-app publish` creates a private, published task from a project directory or updates an existing task when you supply `--task-id`. The assigned agent is required.
+
+```bash
+# Create a reusable Live App task
+pt live-app publish ./my-app --virtual-assistant-id 7
+
+# Update an existing task
+pt live-app publish ./my-app --task-id 42 --virtual-assistant-id 7
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--task-id ID` | Create a task | Update this task instead |
+| `--virtual-assistant-id ID` | Required | Agent assigned to the task |
+| `--app-dir DIRECTORY` | Auto-detect | Flat deployment artifact; otherwise checks `dist/`, then `app/`, then the project root |
+| `--version-name NAME` | `Production` | Name for the task version and app-document versions |
+| `--profile`, `--api-url` | Active profile | Target PrimeThink connection |
+
+The command reads these conventional project files:
+
+- `.name.config` — optional task name; otherwise the project directory name.
+- `.description.config` — optional description; otherwise the task name.
+- `GOAL.md` — optional Live App task goal.
+- `INITIAL_PROMPT.md` — optional initial prompt.
+- `.image.png` — optional task image uploaded after the app files.
+
+The selected artifact must contain `index.html` or `canvas.html`; `canvas.html` is uploaded as `index.html`. The artifact must be flat. If `dist/` or `app/` is selected, every top-level file is included except hidden files and the unused entry alias. For a project-root artifact, only supported web-asset extensions are included. Nested artifact files are rejected before any remote task is created or updated.
+
+Publishing creates a named task version and writes files into the task's `@app` folder. A same-named remote file receives a new document version, which preserves its document ID and relative links. Byte-identical content is reported as unchanged. This is an additive/versioning synchronization: remote `@app` files that are absent locally are not deleted automatically.
+
+### Synchronize a Live App into a test chat
+
+`pt live-app test` deploys the same flat artifact directly into a chat. With no `--chat-id`, it creates a temporary HTML chat by default. With `--chat-id`, it reuses that chat and switches its renderer to Live App mode.
+
+```bash
+# Create a temporary test chat
+pt live-app test ./my-app
+
+# Update one existing chat and open it
+pt live-app test ./my-app --chat-id CHAT_UUID --open
+
+# Create a permanent chat in a workspace
+pt live-app test ./my-app --workspace-id WORKSPACE_ID --permanent
+```
+
+The command supports the same `--app-dir`, `--version-name`, `--profile`, and `--api-url` choices as publishing. `--temporary` / `--permanent` and `--workspace-id` apply only when creating a chat. `--web-url` controls the printed/opened application URL. A non-empty `GOAL.md` is applied when present; it is optional for Live App tests.
+
+Existing app documents are versioned, missing documents are uploaded, identical documents are skipped, and any failed file stops the command with a summary. As with publishing, files absent from the local artifact are not removed from the chat.
+
+### Switch a chat renderer
+
+Use `pt chat type` when you need to change a chat's view without synchronizing a project:
+
+```bash
+pt chat type CHAT_UUID live-app  # API page type: html
+pt chat type CHAT_UUID chat      # normal conversation view
+```
+
+### Run agentic Live App UI tests
+
+After synchronizing the artifact into a specific chat, `pt live-app test-ui` launches `kiro-cli` non-interactively and asks it to follow an agentic Playwright guide against that exact chat.
+
+```bash
+pt live-app test-ui ./my-app CHAT_UUID \
+  --guide ./AGENTIC_UI_TESTING.md \
+  --instructions "Verify create, edit, and delete"
+```
+
+The command requires `kiro-cli` and an already authenticated browser session. It never asks for or forwards login credentials; if the browser session is not authenticated, the test must report that blocker. The chat must already contain the Live App — `test-ui` does not run `pt live-app test` for you.
+
+Guide discovery checks `AGENTIC_UI_TESTING.md` in the current directory, project directory, and project parent, in that order. Optional project `SPECS.md` and `--instructions` / `--test` text are included as test context. By default, the generated report is written to `DIRECTORY/tests/TIMESTAMP/test_results.md`; use `--output-dir` to choose another report directory. A nonzero Kiro exit or missing/unchanged report makes the command fail.
+
+!!! warning
+    Testing guides and `SPECS.md` are untrusted input. The default permits only a restricted set of browser interaction and inspection tools; it does not grant filesystem tools or browser file upload. Use `--trust-all-tools` only after reviewing the guide and only when broader access is genuinely required. The command has no built-in child-process timeout, so interrupt it manually if the Kiro session stalls.
 
 ## Configuration
 
@@ -414,14 +535,19 @@ pt chat unarchive 123
 pt chat delete 123
 ```
 
-### Rename a chat or update its goal
+### Rename a chat, update its goal, or switch its renderer
 
 ```bash
 pt chat rename 123 "Q3 planning (final)"
 
 pt chat goal 123 --goal "Track the Q3 launch checklist"
 pt chat goal 123 --goal-file ./goal.md
+
+pt chat type 123 live-app
+pt chat type 123 chat
 ```
+
+`pt chat type ... live-app` maps to the HTML page type; `chat` restores the normal conversation view.
 
 ## Working with Chat Files
 
@@ -687,22 +813,53 @@ pt task update 99 --description "Updated description"
 pt task update 99 --schedule-nl "every Friday at 17:00"
 ```
 
-### Duplicate, publish, or delete a task
+### Publish and test a task project
+
+A conventional task project stores its instructions and metadata in files that can be reviewed and versioned with the rest of your code:
+
+```text
+briefing/
+├── GOAL.md                 # required and non-empty
+├── INITIAL_PROMPT.md       # optional
+├── .name.config            # optional; defaults to "briefing"
+└── .description.config     # optional; defaults to the task name
+```
+
+Create a private, published task or synchronize those represented fields into an existing task:
+
+```bash
+pt task publish ./briefing --virtual-assistant-id 7
+pt task publish ./briefing --task-id 99 --virtual-assistant-id 7
+```
+
+When updating, the command changes only the project-backed fields — name, description, goal, initial prompt, and assigned agent — and preserves unrelated server fields. This differs from `pt task import`, which creates a new task from portable JSON.
+
+Use `pt task test` to apply the required `GOAL.md` to a temporary test chat, or reuse an existing chat. Existing chats are switched to normal chat mode.
+
+```bash
+pt task test ./briefing
+pt task test ./briefing --chat-id CHAT_UUID
+pt task test ./briefing --workspace-id WORKSPACE_ID --permanent --open
+```
+
+`--temporary` / `--permanent` and `--workspace-id` apply only to newly created chats. `--web-url` controls the printed/opened chat URL. The command validates `GOAL.md` before creating or changing a remote chat.
+
+### Duplicate, change visibility, or delete a task
 
 ```bash
 # Clone a task (prints the new task's JSON, including its id)
 pt task duplicate 99
 
 # Toggle a task's visibility (its type) between public and private
-pt task publish 99
-pt task unpublish 99
+pt task set-public 99
+pt task set-private 99
 
 # Delete a task — prompts for confirmation unless you pass --yes
 pt task delete 99
 pt task delete 99 --yes
 ```
 
-For type changes other than public/private (e.g. `group` or `catalog`), use `pt task update 99 --type group`.
+`pt task publish` now publishes a project directory; it no longer changes visibility. The old `pt task unpublish` command has been removed. For task types other than public/private (for example, `group` or `catalog`), use `pt task update 99 --type group`.
 
 ### Version a task
 

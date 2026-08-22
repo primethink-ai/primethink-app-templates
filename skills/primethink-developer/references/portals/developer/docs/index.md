@@ -33,9 +33,9 @@ Connect PrimeThink with other systems:
 
 ## Looking for Live Apps and Live Pages?
 
-Live Apps, Live Pages, and the in-chat JavaScript APIs (`pt.*`) are documented in the **[Group Admin Documentation](https://docs.primethink.com/admin/)**, since they are built and deployed from inside the PrimeThink app.
+Live Apps, Live Pages, and the in-chat JavaScript APIs (`pt.*`) are documented in the **[Group Admin Documentation](https://help.primethink.ai/admin/)**, since they are built and deployed from inside the PrimeThink app.
 
 ## Other documentation portals
 
-- **[User Documentation](https://docs.primethink.com/)** — for end users of the PrimeThink app
-- **[Group Admin Documentation](https://docs.primethink.com/admin/)** — groups, agents, tasks, and Live Apps
+- **[User Documentation](https://help.primethink.ai/)** — for end users of the PrimeThink app
+- **[Group Admin Documentation](https://help.primethink.ai/admin/)** — groups, agents, tasks, and Live Apps

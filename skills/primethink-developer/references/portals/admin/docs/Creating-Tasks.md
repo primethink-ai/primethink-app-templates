@@ -148,6 +148,19 @@ If your task benefits from user-facing documentation (how to phrase requests, su
 
 Treat `@app/HELP.md` as a first-class deliverable alongside the goal and initial prompt — write it from the end user's perspective and keep it in sync as the task evolves.
 
+## Updating Existing Task Chats
+
+Chats created from a task keep the task version they started with until someone applies the task's updates to that chat. PrimeThink checks against the task's **Production** version; a newer draft alone does not make an update available.
+
+When updates are applied, PrimeThink copies the Production version's task settings into the existing chat. For file-based Live Apps, it also mirrors the task's complete `app/` folder into the chat:
+
+- Files added or changed in the task's `app/` folder are added or updated in the chat.
+- Files removed from the task's `app/` folder are removed from the chat.
+- Chat documents outside `app/` are left unchanged.
+- An `app/`-only change is synchronized even when no other task setting changed.
+
+The Live App file synchronization is best effort. If it fails, other task settings can still be updated and PrimeThink reports a file-sync warning. Confirm that the existing chat renders the updated Live App before relying on it in production.
+
 ## Understanding the Initial Prompt
 
 The Initial Prompt is the first message users see when they start the task. It serves three purposes:

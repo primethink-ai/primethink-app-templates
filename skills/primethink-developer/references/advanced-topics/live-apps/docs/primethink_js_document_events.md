@@ -117,10 +117,12 @@ Understanding when you need `waitForDocumentReady()` depends on how you upload f
 
 ### addMessage with Attachments - No Wait Needed
 
-When you use `pt.addMessage()` with file attachments, the files are sent directly to the AI along with your message. The AI processes the attachments immediately as part of handling the message, so **you don't need to wait for document processing**.
+When you use `pt.addMessage()` with file attachments, PrimeThink starts the normal extraction pipeline and coordinates the wait internally before the AI handles the message. Your app therefore **doesn't need to call `waitForDocumentReady()`**; wait only for the AI response.
+
+The response can take longer while PrimeThink checks the attachments. If extraction does not finish within the server's wait period, or the file contains no readable text, the attachment remains in the message but the AI receives its basic file information instead of extracted text.
 
 ```javascript
-// ✅ Files are processed immediately with the message - no waitForDocumentReady needed
+// ✅ PrimeThink coordinates extraction internally - no waitForDocumentReady needed
 const formData = new FormData();
 formData.append('files', file);
 
@@ -128,7 +130,7 @@ const result = await pt.addMessage(formData, 'Analyze this document');
 // (files-first overload of addMessage — see Data Management API for both call forms)
 const response = await pt.waitForMessageReceived(result.task_id);
 
-// AI has already processed the file and can respond about its contents
+// PrimeThink waited for extraction before the AI response when text was available
 console.log('AI analysis:', response.message);
 ```
 
@@ -154,10 +156,10 @@ const textResult = await pt.getDocumentText(doc.id);
 
 ### Quick Reference
 
-| Upload Method | AI Processes Immediately | Need waitForDocumentReady |
-|---------------|-------------------------|---------------------------|
-| `pt.addMessage(formData, message)` | ✅ Yes | ❌ No |
-| `pt.uploadFiles(form)` | ❌ No | ✅ Yes (for text extraction) |
+| Upload Method | Extraction coordination | Need `waitForDocumentReady()` in your app |
+|---------------|-------------------------|---------------------------------------------|
+| `pt.addMessage(formData, message)` | PrimeThink waits internally before the AI responds | ❌ No |
+| `pt.uploadFiles(form)` | Your app waits if it needs extracted text | ✅ Yes (for text extraction) |
 
 ## Best Practices
 
@@ -480,24 +482,24 @@ async function searchInDocument(docId, query) {
 
 ### Upload with Message (Files + AI Processing) - No Wait Needed
 
-When using `addMessage()` with file attachments, the AI receives and processes the files immediately as part of the message. You only need to wait for the AI response, not for document processing.
+When using `addMessage()` with file attachments, PrimeThink waits internally for queued text extraction before asking the AI to handle the message. You only need to wait for the AI response, not poll document status yourself.
 
 ```javascript
-// Files are sent with the message - AI processes them immediately
+// PrimeThink coordinates extraction as part of handling the message
 const formData = new FormData();
 formData.append('files', file);
 
 const result = await pt.addMessage(formData, 'Analyze these documents');
 const response = await pt.waitForMessageReceived(result.task_id);
 
-// AI has already processed the files - no waitForDocumentReady needed!
+// No separate waitForDocumentReady call is needed
 console.log('AI analysis:', response.message);
 ```
 
 This is different from `uploadFiles()` because:
-- `addMessage()` sends files directly to the AI with your message
-- The AI can immediately read and analyze the file contents
-- No separate document processing step is needed for AI access
+- `addMessage()` associates the files with an AI-bound message
+- PrimeThink waits for queued extraction internally when the model needs extracted text
+- Your app does not need a separate document-status polling step for the AI response
 
 ### Silent Upload (No Message, No AI) - Wait Required
 

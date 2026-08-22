@@ -238,6 +238,14 @@ class SupportChat {
                 body: JSON.stringify({})
             });
 
+            if (response.status === 429) {
+                const retryAfter = response.headers.get('Retry-After');
+                throw new Error(`Too many requests. Try again in ${retryAfter ?? 'a few'} seconds.`);
+            }
+            if (!response.ok) {
+                throw new Error(`Session creation failed with status ${response.status}`);
+            }
+
             const sessionId = await response.json();
             const sessionUrl = `${this.baseUrl}?sid=${sessionId}`;
 
@@ -245,7 +253,7 @@ class SupportChat {
             localStorage.setItem(this.STORAGE_KEY, sessionUrl);
         } catch (error) {
             console.error('Error creating session:', error);
-            this.iframe.src = this.baseUrl; // Fallback
+            this.iframe.srcdoc = '<p role="alert">Chat is temporarily unavailable. Please wait and try again.</p>';
         }
     }
 
@@ -419,6 +427,31 @@ curl -X POST "https://app.primethink.ai/api/v1/public/chats/<chat_share_id>/publ
 ```json
 "00ba58bb-220e-40b8-8959-19294265b17a"
 ```
+
+### Public Chat Rate Limits
+
+Every public-chat API request consumes two independent request budgets:
+
+- A per-visitor budget for each public chat, identified by the share ID and client IP. The default is **20 requests per 60 seconds**.
+- A per-chat budget shared by all visitors to that public chat. The default is **200 requests per 60 seconds**.
+
+These defaults can be changed by the PrimeThink deployment. The limits apply to public session creation, chat details, messages, message editing, socket-token creation, and streaming requests.
+
+When either budget is exhausted, the API returns HTTP `429 Too Many Requests`:
+
+```json
+{
+  "detail": "Rate limit exceeded"
+}
+```
+
+Use the response headers rather than parsing the message text:
+
+- `Retry-After` — seconds until the fixed window resets.
+- `X-RateLimit-Limit` — the ceiling for the budget that was exhausted.
+- `X-RateLimit-Remaining` — `0` for the rejected request.
+
+Wait for the indicated `Retry-After` interval before allowing another attempt; do not immediately retry or hard-code the default 60-second window.
 
 ---
 
@@ -668,6 +701,14 @@ class MultiChatSupport {
                 body: JSON.stringify({})
             });
 
+            if (response.status === 429) {
+                const retryAfter = response.headers.get('Retry-After');
+                throw new Error(`Too many requests. Try again in ${retryAfter ?? 'a few'} seconds.`);
+            }
+            if (!response.ok) {
+                throw new Error(`Session creation failed with status ${response.status}`);
+            }
+
             const sessionId = await response.json();
             const sessionUrl = `https://app.primethink.ai/public/chats/${chatConfig.chatId}?sid=${sessionId}`;
 
@@ -680,6 +721,7 @@ class MultiChatSupport {
 
         } catch (error) {
             console.error('Error creating session:', error);
+            this.iframe.srcdoc = '<p role="alert">Chat is temporarily unavailable. Please wait and try again.</p>';
         }
     }
 
@@ -829,14 +871,22 @@ Always provide fallbacks:
 
 ```javascript
 try {
-    // Create session
+    const response = await fetch(apiUrl, requestOptions);
+
+    if (response.status === 429) {
+        const retryAfter = response.headers.get('Retry-After');
+        showTemporaryError(`Too many requests. Try again in ${retryAfter ?? 'a few'} seconds.`);
+        return; // Wait for user action; do not retry immediately.
+    }
+    if (!response.ok) {
+        throw new Error(`Session creation failed with status ${response.status}`);
+    }
+
     const sessionId = await response.json();
-    const sessionUrl = `${baseUrl}?sid=${sessionId}`;
-    iframe.src = sessionUrl;
+    iframe.src = `${baseUrl}?sid=${sessionId}`;
 } catch (error) {
     console.error('Session creation failed:', error);
-    // Fallback: load chat without session
-    iframe.src = baseUrl;
+    showTemporaryError('Chat is temporarily unavailable. Please try again later.');
 }
 ```
 
@@ -907,6 +957,16 @@ Grant the narrowest set of `sandbox` permissions the widget actually needs. Note
 - Ensure chat is set to public in Primethink
 - Check API URL format
 - Test with cURL first
+
+### API returns 429
+
+**Problem**: A public-chat request fails with `429 Too Many Requests`
+
+**Solutions**:
+- Read the `Retry-After` response header and wait that many seconds before another attempt
+- Do not automatically retry in a tight loop
+- Reuse stored public sessions instead of creating a new session for every interaction or page load
+- If the problem affects many visitors, the public chat may have reached its shared per-chat budget
 
 ### Multiple instances conflict
 
