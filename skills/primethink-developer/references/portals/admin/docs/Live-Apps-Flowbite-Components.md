@@ -8,7 +8,7 @@ Use Flowbite when an app needs standard UI chrome. A working modal becomes a sho
 
 ## Prerequisite: Tailwind CSS v4
 
-**Flowbite v4 requires Tailwind CSS v4.** Before adding Flowbite, the app must include the full Tailwind v4 installation block — pinned browser build, `@custom-variant dark`, and theme bootstrap — as described in **[Tailwind CSS v4 Setup](Live-Apps-Tailwind-v4.md)**. That page is the source of truth for the Tailwind side; nothing there is optional.
+**Flowbite v4 requires Tailwind CSS v4**, but installation depends on the Live App model. A dynamic/no-build app uses the pinned Tailwind browser build plus the class-based dark variant and theme bootstrap. A compiled React/Vite app uses the installed Tailwind Vite plugin and generated CSS; do not add the browser-build script to it. See **[Tailwind CSS v4 Setup](Live-Apps-Tailwind-v4.md)** for both workflows.
 
 Hard rules:
 
@@ -17,20 +17,22 @@ Hard rules:
 
 ## Version and Installation
 
-Use **Flowbite 4.0.1** — pin the version explicitly, as with every CDN resource in Live Apps.
+### Dynamic/no-build HTML or JavaScript
+
+Use **Flowbite 4.0.2** — pin the version explicitly, as with every CDN resource in a dynamic Live App.
 
 ```html
 <head>
     <!-- Tailwind CSS v4 setup block goes here first — see Tailwind CSS v4 Setup -->
 
     <!-- Flowbite v4 styles — pinned -->
-    <link href="https://cdn.jsdelivr.net/npm/flowbite@4.0.1/dist/flowbite.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/flowbite@4.0.2/dist/flowbite.min.css" rel="stylesheet">
 </head>
 <body>
     <!-- App markup -->
 
     <!-- Flowbite v4 script — pinned, loaded before the app's own script -->
-    <script src="https://cdn.jsdelivr.net/npm/flowbite@4.0.1/dist/flowbite.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flowbite@4.0.2/dist/flowbite.min.js"></script>
     <script>
         // App code — initFlowbite() and component classes are now available
     </script>
@@ -39,6 +41,51 @@ Use **Flowbite 4.0.1** — pin the version explicitly, as with every CDN resourc
 
 !!! note "Load order matters"
     Load `flowbite.min.js` **before** the app's own script so that `initFlowbite()` and the component classes (`Modal`, `Dropdown`, etc.) exist when the app code runs.
+
+### Compiled React and `flowbite-react`
+
+The compiled React starter installs Tailwind, Flowbite, and `flowbite-react` as npm dependencies and processes their classes during the Vite build. It does not use the CDN tags above. The starter pins `flowbite-react@0.12.17`; this version exposes subcomponents as flat named exports. Import and render those names directly:
+
+```jsx
+import {
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeadCell,
+  TableRow,
+  Toast,
+  ToastToggle
+} from 'flowbite-react';
+
+function Example({ open, onClose }) {
+  return (
+    <Modal show={open} onClose={onClose}>
+      <ModalHeader>Project details</ModalHeader>
+      <ModalBody>Content</ModalBody>
+      <ModalFooter>Actions</ModalFooter>
+    </Modal>
+  );
+}
+```
+
+Do not use the legacy dot-notation API:
+
+```jsx
+// ❌ Legacy API: these subcomponents are undefined in flowbite-react 0.12+
+<Modal.Header>Project details</Modal.Header>
+<Table.Cell>Value</Table.Cell>
+<Toast.Toggle />
+```
+
+Property access such as `Modal.Header` is valid JavaScript, so the application can build successfully. React fails only when it tries to render the undefined component, commonly with error 130 and a blank app.
+
+!!! warning "Keep the generated root error boundary"
+    Every generated React starter wraps `App` in a `RootErrorBoundary` in `src/main.jsx` or `index.html`. Keep that wrapper when restructuring the entry point. It turns render-time failures into a readable message instead of leaving an empty page; it does not replace using the supported component exports.
 
 ## How Flowbite Works
 
@@ -230,7 +277,7 @@ The datepicker is a core component in v4 with API methods, events, and options �
 
 ## Known Issues and Limitations
 
-* **Runtime verification pending.** Two behaviours must be confirmed in the Live Apps runtime before Flowbite v4 is used in a client-facing app: (1) dark styling follows the `dark` class set by the theme bootstrap, including live theme changes via `pt:theme`; (2) the semantic token utilities in official markup (`bg-brand`, `rounded-base`, etc.) render correctly with the pinned `flowbite.min.css` alongside the Tailwind v4 browser build. Until confirmed, treat this page as the target-state documentation
+* **Dynamic/CDN runtime verification pending.** Before using Flowbite v4 CDN assets in a client-facing dynamic app, confirm that (1) dark styling follows the `dark` class and live `pt:theme` changes, and (2) semantic token utilities in official markup (`bg-brand`, `rounded-base`, etc.) render correctly with the pinned `flowbite.min.css` and Tailwind browser build. Compiled `flowbite-react` apps use the separately documented npm/Vite path.
 * **Theme switching mechanics are undocumented here.** The default (modern) theme ships in `flowbite.min.css`; how alternate themes are activated has not been verified and is out of scope for standard Live Apps
 * **`data-dismiss-target` removes elements from the DOM** — see [Reusable toasts](#reusable-toasts)
 * **Backdrops are appended to `<body>`** — never destroy an open modal's or drawer's markup via a re-render; see the re-initialisation rules

@@ -823,18 +823,18 @@ The user must have a setting `HA_REMOTE_TOKEN` configured in their user settings
 |--------|----------|-------------|
 | `server_label` | Yes | Unique label for the MCP server |
 | `server_url` | Yes | MCP server endpoint URL |
-| `require_approval` | No* | `"never"`, `"always"`, or an OpenAI approval-policy object; omit for the OpenAI default (approval required). ***Must be an explicit `"never"` for the server to attach on Anthropic models** — anything else skips the server, fail-closed |
-| `headers` | No | HTTP headers dict, supports `${SETTING_NAME}` placeholders. On Anthropic only a Bearer `Authorization` header survives (sent as `authorization_token`); every other header is dropped with a warning |
-| `allowed_tools` | No | Restricts which server tools are exposed — a list of tool names (empty list = allow none). Nested under `tool_configuration` for Anthropic automatically |
+| `require_approval` | No* | `"never"`, `"always"`, or an OpenAI approval-policy object; omit for the OpenAI default (approval required). ***Must be an explicit `"never"` for the server to attach on direct Anthropic models** — anything else skips the server, fail-closed |
+| `headers` | No | HTTP headers dict, supports `${SETTING_NAME}` placeholders. On direct Anthropic only a Bearer `Authorization` header survives (sent as `authorization_token`); every other header is dropped with a warning |
+| `allowed_tools` | No | Restricts which server tools are exposed — a list of tool names (empty list = allow none). Nested under `tool_configuration` for direct Anthropic automatically |
 
-Any extra keys in `options` are passed through to the MCP config as-is on OpenAI; on Anthropic only the fields above are sent.
+Any extra keys in `options` are passed through to the MCP config as-is on OpenAI; on direct Anthropic only the fields above are sent.
 
 ### Running MCP capabilities on Anthropic models
 
-The same capability runs on both OpenAI and Anthropic — the stored options are
-translated to each provider's wire format automatically. Anthropic's MCP
+The same capability runs on both OpenAI and direct Anthropic — the stored options are
+translated to each provider's wire format automatically. This does not include AWS Bedrock Claude (`bedrock:...`), which has no hosted MCP connector. Direct Anthropic's MCP
 connector is more restrictive, so check four things before pointing an
-MCP-equipped agent at a Claude model:
+MCP-equipped agent at an `anthropic:...` Claude model:
 
 1. `require_approval` is an explicit `"never"` — Anthropic has no approval
    flow, so approval-gated servers are skipped rather than attached.
@@ -1191,15 +1191,15 @@ When an agent is initialized, this is the flow:
 4. Agent's get_graph():
    a. attach_mcp(llm, internal_tools, mcp_tool_configs) → (model, agent_tools)
         • OpenAI    → MCP dicts appended to agent_tools (Responses API)
-        • Anthropic → MCP gated + translated to mcp_servers on a copy of the
+        • direct Anthropic → MCP gated + translated to mcp_servers on a copy of the
                       model (approval-gated or malformed servers are skipped
                       fail-closed, with a warning)
         • other     → MCP skipped with a warning
    b. create_agent(model=model, tools=agent_tools)
 ```
 
-> Hosted MCP works on both OpenAI and Anthropic from the same capability — only
-> the model changes. See [MCP Capabilities](MCP-Capabilities.md) for the
+> Hosted MCP works on OpenAI and direct Anthropic from the same capability — only
+> the model changes. AWS Bedrock Claude does not support hosted MCP. See [MCP Capabilities](MCP-Capabilities.md) for the
 > per-provider configuration differences.
 
 ---

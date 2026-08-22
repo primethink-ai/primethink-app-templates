@@ -99,6 +99,23 @@ Every command that calls the API accepts these two options:
 > `--path` (a directory inside the chat/collection) on the file commands. When in doubt,
 > use the long forms.
 
+### Getting help
+
+`--help` can be written before or after the command it describes — the CLI resolves
+the whole command path that follows the flag, so these three are equivalent:
+
+```bash
+pt chat send --help
+pt chat --help send
+pt --help chat send
+```
+
+A leading `--help` never errors: it descends as far as the path is recognized, so
+`pt --help chat nope` describes `pt chat`, and `pt --help nope` describes `pt`. A
+*trailing* `--help` keeps Click's own behavior, where the command path has to
+resolve before the flag is reached — `pt chat nope --help` is still a
+`No such command 'nope'` error.
+
 ### Output
 
 - Commands that call the API print the JSON response, pretty-printed with 2-space indentation, to stdout. This makes output easy to pipe into `jq` or redirect to a file.

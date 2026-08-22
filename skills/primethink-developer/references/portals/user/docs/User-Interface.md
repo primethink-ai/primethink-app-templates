@@ -144,6 +144,12 @@ Sub-chats inherit certain properties from their parent conversation while mainta
 
 The central area serves as your primary workspace, where most of your interaction happens. It's designed to provide a clear view of your conversations while offering powerful tools right where you need them:
 
+### Switching between conversation and Live App views
+
+A Task or AI agent can turn the current conversation into a rendered Live App and can switch it back to the normal conversation later. PrimeThink changes the view automatically; you do not need to refresh the browser.
+
+Text already entered in the message composer is retained during the switch. If the view changes before the Live App files are ready, PrimeThink shows a temporary loading state and displays the app when generation finishes.
+
 ### Chat Display
 Messages appear in a chronological thread, with clear visual distinction between different types of content. The interface supports rich content including text, files, and code snippets, displaying each appropriately to maintain readability.
 
@@ -292,6 +298,8 @@ These buttons can be:
 ### Document List
 
 The list of documents associated with the current chat is displayed here. Each document is listed with its filename and the file type is indicated by both icon and extension. Multiple file types are supported including .md, .pdf, .docx, and text files.
+
+In table view, the **Date** column shows each document's creation date and local time in 24-hour format. The same format is used in Collection Detail views.
 
 Each document in the list has four action buttons:
 - **Preview**: View the document content

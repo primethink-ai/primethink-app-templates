@@ -6,14 +6,15 @@ Like API capabilities, MCP capabilities are pure configuration: no code, just a 
 
 For the bigger picture of how capabilities fit together, see [Capabilities](Capabilities.md).
 
-!!! warning "Supported models: OpenAI and Anthropic"
+!!! warning "Supported models: OpenAI and direct Anthropic"
     Hosted MCP is executed by the model provider itself, so it only works on providers with an MCP connector:
 
     - **OpenAI models** — MCP tools are attached through OpenAI's Responses API.
-    - **Anthropic (Claude) models** — MCP servers are attached through Anthropic's MCP connector. The capability must set an explicit `require_approval: "never"` and can only authenticate with a Bearer token — see [Running on Anthropic (Claude) models](#running-on-anthropic-claude-models).
+    - **Direct Anthropic (Claude) models** (`anthropic:...`) — MCP servers are attached through Anthropic's MCP connector. The capability must set an explicit `require_approval: "never"` and can only authenticate with a Bearer token — see [Running on Anthropic (Claude) models](#running-on-anthropic-claude-models).
+    - **AWS Bedrock Claude models** (`bedrock:...`) — Bedrock does not provide Anthropic's hosted MCP connector. Do not attach an MCP capability to a Bedrock agent; the provider can reject requests containing hosted-MCP configuration.
     - **Any other provider** (Gemini, Groq, DeepSeek, Mistral, …) — MCP capabilities are **skipped** and a warning is logged; the rest of the agent is unaffected.
 
-    The same capability works on both supported providers — nothing in the options changes when you swap the agent's model; the translation to each provider's format happens automatically.
+    The same capability works on OpenAI and direct Anthropic — nothing in the options changes when you swap between those providers; the translation happens automatically. Bedrock-hosted Claude is a separate provider and does not support hosted MCP.
 
 ## Options schema
 
@@ -76,7 +77,10 @@ The value is then available as `${HA_REMOTE_TOKEN}` in the capability's options.
 
 ## Running on Anthropic (Claude) models
 
-The same MCP capability that runs on OpenAI also runs on Anthropic — PrimeThink translates the options into Anthropic's MCP-connector format at bind time (`server_label` → `name`, `server_url` → `url`, `allowed_tools` → `tool_configuration.allowed_tools`, and the `Authorization` Bearer token → `authorization_token`). Anthropic's connector is more restrictive than OpenAI's, so a capability must meet four conditions to attach on a Claude model:
+!!! important "Direct Anthropic only"
+    This section applies to `anthropic:...` models. AWS Bedrock Claude models use the `bedrock:...` prefix and do not provide Anthropic's hosted MCP connector. Do not attach MCP capabilities to Bedrock agents because the provider can reject requests containing hosted-MCP configuration.
+
+The same MCP capability that runs on OpenAI also runs on direct Anthropic — PrimeThink translates the options into Anthropic's MCP-connector format at bind time (`server_label` → `name`, `server_url` → `url`, `allowed_tools` → `tool_configuration.allowed_tools`, and the `Authorization` Bearer token → `authorization_token`). Anthropic's connector is more restrictive than OpenAI's, so a capability must meet four conditions to attach on a Claude model:
 
 1. **`require_approval` must be an explicit `"never"`.** Anthropic has no tool-approval flow, so a server whose calls would be gated on OpenAI can't be attached safely. The integration is *fail-closed*: anything other than `"never"` — including omitting the field — skips the server on Anthropic, with a logged warning. (Setting `"never"` is also the only mode in which OpenAI runs the tools without pausing for approval.)
 2. **`server_url` and `server_label` must both be set.** Anthropic rejects an entry missing either one with an error that would fail every message, so incomplete configs are skipped instead of attached.
@@ -148,7 +152,7 @@ Minimal MCP capability:
 
 Rules to remember:
 
-- **OpenAI and Anthropic models only** — MCP capabilities are skipped on other providers.
+- **OpenAI and direct Anthropic models only** — do not configure hosted MCP on AWS Bedrock Claude; MCP capabilities are skipped on other unsupported providers.
 - On Anthropic, `require_approval: "never"` is mandatory (fail-closed) and only a Bearer `Authorization` header is sent — custom headers are dropped.
 - No stray whitespace in `server_url`.
 - Secrets → `${SETTING_NAME}` placeholders in `headers`, defined in settings first.
