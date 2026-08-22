@@ -153,6 +153,10 @@ Text already entered in the message composer is retained during the switch. If t
 ### Chat Display
 Messages appear in a chronological thread, with clear visual distinction between different types of content. The interface supports rich content including text, files, and code snippets, displaying each appropriately to maintain readability.
 
+Consecutive system notices of the same kind on the same day are condensed for participant joins and documents added to the chat. The summary names up to three items and then shows how many others are included. Select a grouped join notice to see the participant list, or select a grouped document notice to see its documents and open their details. A normal chat message, a different notice kind, or a day boundary starts a new group; other system notices remain separate.
+
+Message bubbles, sender names, and participant avatars use a consistent participant tint to make multi-person and multi-agent conversations easier to scan. The palette adapts to light and dark themes, while your own messages use the PrimeThink brand tint. Public-chat guest and agent color overrides continue to apply, restyled to fit the active theme.
+
 #### Message Interaction Features
 
 PrimeThink provides several ways to interact with messages, making it easy to manage and use information within your conversations. Let's explore these interaction options in detail.

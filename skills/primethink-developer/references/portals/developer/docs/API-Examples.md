@@ -559,12 +559,11 @@ curl -X POST \
 
 ```json
 {
-  "error": "Too Many Requests",
-  "message": "Rate limit exceeded. Please try again later.",
-  "retry_after": 60,
-  "status_code": 429
+  "detail": "Rate limit exceeded"
 }
 ```
+
+Read `Retry-After` to determine how many seconds to wait before trying again. `X-RateLimit-Limit` identifies the exhausted budget's ceiling, and `X-RateLimit-Remaining` is `0` on the rejected request. Avoid immediate retry loops.
 
 ---
 

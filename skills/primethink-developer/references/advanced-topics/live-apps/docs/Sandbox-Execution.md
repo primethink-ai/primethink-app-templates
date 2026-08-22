@@ -39,7 +39,7 @@ The sandbox comes pre-configured with these environment variables:
 | `PT_CHAT_ID` | Current chat ID (when available) |
 | `PT_TURN_ID` | Unique identifier for the current agent turn |
 
-The ephemeral API key (`PT_TOKEN`) inherits the user's role at creation time, allowing in-sandbox tools to call the PrimeThink API with the user's own permissions (it cannot exceed them).
+The ephemeral API key (`PT_TOKEN`) inherits the user's role at creation time, allowing in-sandbox tools to call the PrimeThink API with the user's own permissions (it cannot exceed them). It also uses that role's API rate-limit tier, but draws from its own per-key budget so sandbox calls do not consume the user's interactive-session budget.
 
 !!! warning "Sandbox code acts with the user's authority"
     Because code the agent runs in the sandbox acts with this authority, only enable the Sandbox capability for agents and content you trust, and treat sandbox execution as part of your prompt-injection threat model.

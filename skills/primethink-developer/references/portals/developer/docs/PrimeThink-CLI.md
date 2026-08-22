@@ -210,7 +210,7 @@ pt live-app test ./my-app --chat-id CHAT_UUID --open
 pt live-app test ./my-app --workspace-id WORKSPACE_ID --permanent
 ```
 
-The command supports the same `--app-dir`, `--version-name`, `--profile`, and `--api-url` choices as publishing. `--temporary` / `--permanent` and `--workspace-id` apply only when creating a chat. `--web-url` controls the printed/opened application URL. A non-empty `GOAL.md` is applied when present; it is optional for Live App tests.
+The command supports the same `--app-dir`, `--version-name`, `--profile`, and `--api-url` choices as publishing. `--temporary` / `--permanent` and `--workspace-id` apply only when creating a chat. By default, the URL is derived from the selected API URL: a host beginning with `api.` is mapped to `app.`, while custom and development hosts are used unchanged. Pass `--web-url` to override the printed/opened application URL. A non-empty `GOAL.md` is applied when present; it is optional for Live App tests.
 
 Existing app documents are versioned, missing documents are uploaded, identical documents are skipped, and any failed file stops the command with a summary. As with publishing, files absent from the local artifact are not removed from the chat.
 
@@ -276,8 +276,10 @@ scenarios:
 
 The runner exits `0` when every step passes, `1` when a test step fails, and `2` for invalid plans or environment errors. See the [complete UI-testing guide](https://github.com/primethink-ai/primethink-app-templates/blob/main/skills/primethink-developer/ui-testing/README.md) for supported actions, assertions, target types, runner options, and result formats.
 
-!!! warning "Verify browser authentication"
+!!! warning "Verify browser authentication and review test plans"
     By default, the runner resolves the PrimeThink API token from `PRIMETHINK_TOKEN` or the active CLI profile and seeds the documented local-storage keys before the app loads. Verify those keys against the current web application. If it uses a different key or cookie-based session, configure the plan's `auth` block or pass `--storage-state` with a previously saved authenticated browser session. Never commit tokens or storage-state files.
+
+    Treat a YAML test plan as trusted developer input and review it before execution. Keep navigation on the intended `base_url` origin and use path-safe step IDs containing only letters, numbers, periods, underscores, or hyphens. The current runner does not enforce same-origin navigation or constrain failure-snapshot filenames derived from step IDs, so do not run plans obtained from untrusted sources.
 
 ## Configuration
 
@@ -881,7 +883,7 @@ pt task test ./briefing --chat-id CHAT_UUID
 pt task test ./briefing --workspace-id WORKSPACE_ID --permanent --open
 ```
 
-`--temporary` / `--permanent` and `--workspace-id` apply only to newly created chats. `--web-url` controls the printed/opened chat URL. The command validates `GOAL.md` before creating or changing a remote chat.
+`--temporary` / `--permanent` and `--workspace-id` apply only to newly created chats. By default, the URL is derived from the selected API URL: a host beginning with `api.` is mapped to `app.`, while custom and development hosts are used unchanged. Pass `--web-url` to override the printed/opened chat URL. The command validates `GOAL.md` before creating or changing a remote chat.
 
 ### Duplicate, change visibility, or delete a task
 
@@ -1417,6 +1419,16 @@ pt profile add --help
 pt task create --help
 pt chat sync-to --help
 ```
+
+The `--help` flag can appear before, within, or after a recognized command path. These commands show the same help page:
+
+```bash
+pt --help chat send
+pt chat --help send
+pt chat send --help
+```
+
+A leading `--help` descends through recognized commands and stops at the first unknown path segment, showing help for the enclosing group. A trailing `--help` retains Click's normal path validation, so an unknown command before the flag still reports a `No such command` error.
 
 ### Documentation
 

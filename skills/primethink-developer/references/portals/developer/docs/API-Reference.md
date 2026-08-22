@@ -21,10 +21,26 @@ See [API: Auth](API-Auth.md) for details. (A query-parameter fallback exists for
 
 ## Rate Limits
 
-Please be aware of the following rate limits when using the API:
-- Free tier: 100 requests per day
-- Pro tier: 1,000 requests per hour
-- Enterprise tier: Custom limits available
+API-key-authenticated requests use a fixed-window budget for each key and group. The role assigned to the key selects the tier; separate API keys do not consume one another's budgets.
+
+The default 60-second limits are:
+
+| API key role | `GET` requests | `POST`/`PUT`/`PATCH`/`DELETE` requests |
+|---|---:|---:|
+| User or a custom role without its own tier | 600 | 120 |
+| Group Admin | 1,200 | 240 |
+
+Read and write budgets are independent. `HEAD` and `OPTIONS` requests are not metered. Deployments can configure different limits and window lengths.
+
+When a budget is exhausted, the API returns HTTP `429 Too Many Requests`:
+
+```json
+{
+  "detail": "Rate limit exceeded"
+}
+```
+
+The response includes `Retry-After`, `X-RateLimit-Limit`, and `X-RateLimit-Remaining` headers. Wait for the indicated `Retry-After` interval before retrying; immediate retry loops continue consuming requests without succeeding. If the rate-limit store is temporarily unavailable, authenticated API traffic is allowed rather than failing authentication.
 
 ## Need Help?
 
