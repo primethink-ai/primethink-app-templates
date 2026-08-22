@@ -44,6 +44,7 @@ Based on what you're building, read the appropriate reference before writing cod
 | Dynamic/no-build app — before writing code | `libraries/index.md` — reusable modules to copy instead of re-implementing |
 | Choose dynamic vs compiled Live App | "Choose the Live App workflow" below |
 | Compiled app or Deep1 sandbox build | `references/developer-guide/compiled-live-apps.md` and generated template `README.md` |
+| Automated UI testing of a deployed Live App | `ui-testing/README.md` — plan-driven, deterministic Playwright runner |
 | PrimeThink CLI command/API details | `references/developer-guide/cli/index.md` → exact upstream docs in `docs/` |
 | Live App APIs and patterns | `references/advanced-topics/live-apps/index.md` → specific docs in `docs/` |
 | Task or Agent (AI workflow instructions) | `references/ai-automation/summary.md` |
@@ -395,3 +396,25 @@ live view — not by reading the code (the build passes on all of these).
 If any box fails, fix it and re-verify. **Do not report completion with a known failing item** —
 "it builds" is not "it works": #130 and the theme trap both pass the build and only surface
 when a human opens the app.
+
+## Automated UI Testing (plan-driven, deterministic)
+
+For repeatable UI testing of a deployed Live App, use the plan-driven workflow in
+`ui-testing/README.md` — **read it before testing**. In short:
+
+1. Deploy/open the app so there is a live chat URL to test.
+2. Capture the app's **accessibility snapshot** and author `tests/test_plan.yaml`
+   from it (a YAML step DSL with semantic `role`/`name`/`text`/`label` targets —
+   never guess selectors from memory).
+3. Run it deterministically — no LLM in the execution loop:
+   ```bash
+   pip install playwright pyyaml && playwright install chromium   # once
+   python ui-testing/run_plan.py tests/test_plan.yaml
+   ```
+4. Read `tests/results/results.json` + `test_results.md`. For each failed step,
+   open its attached snapshot, fix that **one** `target` in the YAML, and re-run.
+5. Commit `tests/test_plan.yaml` — it is the durable, reviewable artifact.
+
+Authoring and healing are your job (they are LLM work); execution is fixed code, so
+the same plan yields the same steps every run and is safe to gate a publish on.
+This replaces the old agentic `pt live-app test-ui` command.

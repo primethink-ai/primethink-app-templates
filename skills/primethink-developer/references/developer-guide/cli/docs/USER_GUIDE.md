@@ -1365,6 +1365,15 @@ pt task create --help
 pt chat sync-to --help
 ```
 
+`--help` also works *before* the command it describes — the CLI resolves the rest
+of the command path, so `pt --help chat send` and `pt chat --help send` print the
+same page as `pt chat send --help`:
+
+```bash
+pt --help chat send
+pt chat --help send
+```
+
 ### Documentation
 
 - [README](README.md) - Quick start guide

@@ -5,7 +5,7 @@ description: Use the PrimeThink CLI (`pt`) to interact with the PrimeThink API a
 
 # PrimeThink CLI
 
-The PrimeThink CLI is installed as `pt` (`pip install primethink-cli`; in the source repo, `pip install -e .` or run `python primethink.py …` directly). Full documentation: `pt --help`, `pt <group> --help`, or [docs/cli-reference.md](https://github.com/primethink-ai/primethink-cli/blob/main/docs/cli-reference.md).
+The PrimeThink CLI is installed as `pt` (`pip install primethink-cli`; in the source repo, `pip install -e .` or run `python primethink.py …` directly). Full documentation: `pt --help`, `pt <group> --help`, or [docs/cli-reference.md](https://github.com/primethink-ai/primethink-cli/blob/main/docs/cli-reference.md). The help flag may come before or after the command path (`pt --help chat send` == `pt chat send --help`).
 
 ## Before you start
 
@@ -83,7 +83,8 @@ pt task update TASK_ID [fields…]          # PATCH: only passed fields change; 
 pt task get TASK_ID
 pt task delete TASK_ID [--yes]            # DESTRUCTIVE; prompts unless --yes
 pt task duplicate TASK_ID
-pt task set-public TASK_ID | set-private TASK_ID   # visibility; other types: task update --type
+pt task set-public TASK_ID                # visibility (was: task publish)
+pt task set-private TASK_ID               # visibility (was: task unpublish); other types: task update --type
 pt task publish DIRECTORY --virtual-assistant-id ID [--task-id TASK_ID]
 pt task test DIRECTORY [--chat-id CHAT_ID] [--temporary|--permanent] [--open]
 pt task export TASK_ID [-o FILE]          # portable config JSON (server fields stripped)

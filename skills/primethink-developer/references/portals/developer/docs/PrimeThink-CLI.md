@@ -223,22 +223,61 @@ pt chat type CHAT_UUID live-app  # API page type: html
 pt chat type CHAT_UUID chat      # normal conversation view
 ```
 
-### Run agentic Live App UI tests
+### Run deterministic Live App UI tests
 
-After synchronizing the artifact into a specific chat, `pt live-app test-ui` launches `kiro-cli` non-interactively and asks it to follow an agentic Playwright guide against that exact chat.
+Automated Live App UI testing is no longer a `pt` subcommand. The former `pt live-app test-ui` command was removed in CLI 1.3.4; testing now belongs to the `primethink-developer` skill and uses a reviewable YAML plan with a bundled deterministic Playwright runner. An LLM may author or repair the plan, but no LLM runs in the execution loop.
+
+Install or update the complete developer skill, then install the runner's development dependencies once:
 
 ```bash
-pt live-app test-ui ./my-app CHAT_UUID \
-  --guide ./AGENTIC_UI_TESTING.md \
-  --instructions "Verify create, edit, and delete"
+pt install-developer-skill                       # Claude Code default
+pt install-developer-skill --dir ~/.kiro/skills  # Kiro
+
+pip install playwright pyyaml
+playwright install chromium
 ```
 
-The command requires `kiro-cli` and an already authenticated browser session. It never asks for or forwards login credentials; if the browser session is not authenticated, the test must report that blocker. The chat must already contain the Live App — `test-ui` does not run `pt live-app test` for you.
+Deploy the app to a chat with `pt live-app test`, open that live chat, and follow this workflow:
 
-Guide discovery checks `AGENTIC_UI_TESTING.md` in the current directory, project directory, and project parent, in that order. Optional project `SPECS.md` and `--instructions` / `--test` text are included as test context. By default, the generated report is written to `DIRECTORY/tests/TIMESTAMP/test_results.md`; use `--output-dir` to choose another report directory. A nonzero Kiro exit or missing/unchanged report makes the command fail.
+1. Capture the running app's accessibility snapshot. Author against the rendered interface instead of guessing selectors from source code or memory.
+2. Create `tests/test_plan.yaml`. Prefer semantic targets such as `role` + `name`, `text`, and `label`; use CSS or XPath only as a fallback.
+3. Run the plan with the copy of `run_plan.py` bundled in the installed skill.
+4. Read `tests/results/results.json` and `tests/results/test_results.md`. A failed step also writes a fresh accessibility snapshot.
+5. Correct only the failing target, rerun the same plan, and commit `tests/test_plan.yaml` as the durable test artifact.
 
-!!! warning
-    Testing guides and `SPECS.md` are untrusted input. The default permits only a restricted set of browser interaction and inspection tools; it does not grant filesystem tools or browser file upload. Use `--trust-all-tools` only after reviewing the guide and only when broader access is genuinely required. The command has no built-in child-process timeout, so interrupt it manually if the Kiro session stalls.
+```bash
+# Choose the directory where your coding agent installed the skill.
+SKILL_DIR="$HOME/.kiro/skills/primethink-developer"
+python "$SKILL_DIR/ui-testing/run_plan.py" tests/test_plan.yaml
+```
+
+A minimal plan identifies the deployed chat and gives every scenario and step a stable ID:
+
+```yaml
+plan_version: 1
+app_name: my-live-app
+base_url: https://app.primethink.ai
+chat_id: CHAT_UUID
+
+scenarios:
+  - id: create-item
+    title: User can create an item
+    steps:
+      - id: create-item.open
+        action: navigate
+        url: /chats/CHAT_UUID
+      - id: create-item.add
+        action: click
+        target: { role: button, name: "Add" }
+      - id: create-item.verify
+        action: expect_visible
+        target: { text: "Item created" }
+```
+
+The runner exits `0` when every step passes, `1` when a test step fails, and `2` for invalid plans or environment errors. See the [complete UI-testing guide](https://github.com/primethink-ai/primethink-app-templates/blob/main/skills/primethink-developer/ui-testing/README.md) for supported actions, assertions, target types, runner options, and result formats.
+
+!!! warning "Verify browser authentication"
+    By default, the runner resolves the PrimeThink API token from `PRIMETHINK_TOKEN` or the active CLI profile and seeds the documented local-storage keys before the app loads. Verify those keys against the current web application. If it uses a different key or cookie-based session, configure the plan's `auth` block or pass `--storage-state` with a previously saved authenticated browser session. Never commit tokens or storage-state files.
 
 ## Configuration
 
