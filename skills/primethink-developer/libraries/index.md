@@ -72,7 +72,7 @@ imports (`./pt-safe.js` etc.), so this holds as long as you keep the folder flat
 | `ptr-hooks.js` | React data layer: collections, entity, singleton, filter/paginate | `usePtCollection` `usePtEntity` `usePtSingleton` `usePt` `usePtMembers` `useFilteredList` `usePagination` `useAsync` `useInterval` `useDebouncedValue` `useDebouncedCallback` `useOnMount` `useLocalDraft` `normList` `normEntity` `toId` `ptAvailable` | React CRUD apps |
 | `ptr-router.js` | Hash-based multi-page routing | `Router` `Link` `NavTabs` `useRoute` `useParams` `useQueryState` `useTitle` `navigate` `back` `subscribe` `parseHash` `buildHash` `matchPath` `resolveRoute` `createRouter` | Multi-view React apps |
 | `ptr-ai.js` | React fire-and-forget AI hooks | `useAiTask` `useAiJson` `useAiQueue` `buildTaskPrompt` `extractJson` `ptAvailable` | AI generators in React |
-| `ptr-ui.js` | Shared React widget kit (36 exports) | `Button` `IconButton` `Input` `Textarea` `Select` `Checkbox` `Toggle` `Card` `Badge` `Avatar` `Modal` `Drawer` `Sidebar` `ConfirmProvider` `useConfirm` `ToastProvider` `useToast` `Tabs` `Tooltip` `SearchInput` `Pagination` `DataTable` `StatCard` `ProgressBar` `Skeleton` `Spinner` `EmptyState` `ErrorState` `PageHeader` `FileDropZone` `useFocusTrap` `useDebounced` `useId` `cx` | React UI |
+| `ptr-ui.js` | Shared React widget kit (38 exports) | `AppShell` `ResponsiveAppShell` `Button` `IconButton` `Input` `Textarea` `Select` `Checkbox` `Toggle` `Card` `Badge` `Avatar` `Modal` `Drawer` `Sidebar` `ConfirmProvider` `useConfirm` `ToastProvider` `useToast` `Tabs` `Tooltip` `SearchInput` `Pagination` `DataTable` `StatCard` `ProgressBar` `Skeleton` `Spinner` `EmptyState` `ErrorState` `PageHeader` `FileDropZone` `useFocusTrap` `useDebounced` `useId` `cx` | Responsive React app shells and UI |
 | `ptr-editor.js` | Text/markdown/rich-text editors (imports `pt-markdown.js`) | `MarkdownEditor` `RichTextEditor` `QuillEditor` `EditorToolbar` `useUndoRedo` `useEditorAutosave` `insertAtCursor` `wrapSelection` `prefixLines` `sanitizeHtmlTree` `loadQuill` | Editing apps |
 | `ptr-dnd.js` | Drag-and-drop / reordering (zero deps) | `useSortableList` `SortableList` `useDragBoard` `useFileDrop` `DragHandle` `arrayMove` `reindexOrder` | Reorderable lists, kanban |
 
@@ -257,16 +257,35 @@ run('Summarise this as {"summary":"..."}');
 ## React UI & editors
 
 ### `ptr-ui.js`
-36 accessible widgets. Portals (`Modal`, `Drawer`, `ToastHost`) guard on
-`ReactDOM.createPortal` with an inline fallback. `ConfirmProvider`+`useConfirm` replace
-`window.confirm`; `ToastProvider`+`useToast` replace ad-hoc toasts. Imports `hashColor`
-from `pt-format.js` for `Avatar`, so **copy `pt-format.js` too**.
+38 accessible widgets. `AppShell` (`ResponsiveAppShell` alias) provides the required
+sticky topbar, persistent desktop sidebar, mobile navigation trigger, accessible drawer,
+and a single main scroll region; its navigation may be a node or a render function that
+receives `closeNavigation`. Portals (`Modal`, `Drawer`, `ToastHost`) guard on
+`ReactDOM.createPortal` with an inline fallback. `Drawer` reference-counts background
+scroll locking with `Modal`, makes background siblings inert (or `aria-hidden` when inert
+is unavailable), and—with `useFocusTrap`—restores focus after Escape/backdrop close. `ConfirmProvider`+
+`useConfirm` replace `window.confirm`; `ToastProvider`+`useToast` replace ad-hoc toasts.
+Imports `hashColor` from `pt-format.js` for `Avatar`, so **copy `pt-format.js` too**.
 
 ```jsx
-import { ToastProvider, useToast, DataTable, Button } from './ptr-ui.js';
-const toast = useToast();
-<Button variant="primary" onClick={() => toast.success('Saved')}>Save</Button>
+import { AppShell, ToastProvider, useToast, DataTable, Button } from './ptr-ui.js';
+
+<AppShell
+  appName="Operations"
+  header={<h1>Operations</h1>}
+  navigation={({ closeNavigation }) => (
+    <nav aria-label="Primary navigation">
+      <a href="#/overview" onClick={closeNavigation}>Overview</a>
+      <a href="#/orders" onClick={closeNavigation}>Orders</a>
+    </nav>
+  )}
+>
+  <Routes />
+</AppShell>
 ```
+
+Read `../references/developer-guide/responsive-live-apps.md` for the shell contract,
+compiled/HTML equivalents, responsive content patterns, and viewport-matrix tests.
 
 ### `ptr-editor.js`
 `MarkdownEditor` (toolbar + live preview + word count; preview HTML comes only from

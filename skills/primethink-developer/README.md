@@ -84,5 +84,5 @@ PRIMETHINK_CLI_DIR=/path/to/primethink-cli \
 python build_skill_references.py --sync
 ```
 
-Generated portal, Live App, and CLI copies should not be edited by hand. `SKILL.md`, `libraries/`, and `references/developer-guide/compiled-live-apps.md` are hand-maintained.
+Generated portal, Live App, and CLI copies should not be edited by hand. `SKILL.md`, `libraries/`, `references/developer-guide/compiled-live-apps.md`, and `references/developer-guide/responsive-live-apps.md` are hand-maintained.
 

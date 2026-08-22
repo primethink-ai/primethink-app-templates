@@ -62,6 +62,12 @@ plan_version: 1
 app_name: my-live-app
 base_url: https://app.primethink.ai          # optional; --base-url overrides
 chat_id: chat-123
+# Optional viewport matrix. Without it, the runner keeps its original single-context behavior.
+# Every scenario runs at every entry unless it declares `viewports: [mobile]`, etc.
+viewports:
+  - { name: desktop, width: 1280, height: 800 }
+  - { name: tablet, width: 768, height: 1024 }
+  - { name: mobile, width: 390, height: 844 }
 # Optional auth override — see "Authentication" below. Omit to use the default.
 # auth:
 #   localStorage: { key: "token", value_from: "pt_token" }
@@ -102,13 +108,15 @@ scenario stops at its first failed step.
 | `action` | Fields | Playwright call |
 |---|---|---|
 | `navigate` | `url` | `page.goto` |
+| `set_viewport` | `width`, `height` | resize the current page viewport |
 | `click` | `target` | `locator.click` |
 | `fill` | `target`, `value` | `locator.fill` |
 | `select` | `target`, `value` | `locator.select_option` |
-| `press` | `target`, `key` | `locator.press` |
+| `press` | optional `target`, `key` | locator press, or page keyboard when target is omitted |
 | `hover` | `target` | `locator.hover` |
 | `upload` | `target`, `files` | `locator.set_input_files` |
 | `wait_for` | `target` | `locator.wait_for` |
+| `scroll` | optional `target`, optional `x`/`y` | scroll the page or a specific scroll region |
 
 ### Assertions
 
@@ -119,7 +127,11 @@ scenario stops at its first failed step.
 | `expect_text` | `target`, `contains` \| `equals` | text content |
 | `expect_value` | `target`, `value` | input value |
 | `expect_count` | `target`, `count` | number of matches |
+| `expect_attribute` | `target`, `attribute`, `value` | exact DOM attribute value |
 | `expect_url` | `contains` \| `equals` | page URL |
+| `expect_no_horizontal_overflow` | optional `target`, optional `tolerance_px` | document or region does not overflow horizontally |
+| `expect_stuck_to_top` | `target`, optional `offset_px`/`tolerance_px` | element's bounding box remains at the expected top offset |
+| `expect_in_viewport` | `target`, optional `fully`/`tolerance_px` | element is fully (default) or partly inside the viewport |
 
 Every action/assertion accepts an optional `timeout_ms` (Playwright auto-waits up
 to it; default 10000, override globally with `--timeout-ms`).
@@ -138,6 +150,48 @@ to it; default 10000, override globally with `--timeout-ms`).
 Optional per-target: `exact: true` (exact text match) and `nth: N` (pick the Nth
 match). Prefer role/name/text/label — those are what you can read straight from an
 accessibility snapshot and what rots slowest.
+
+## Responsive and viewport-matrix plans
+
+When `viewports` is omitted, the runner creates one default context and preserves legacy
+step IDs. When it is present, the runner creates an isolated browser context at each size,
+runs scenarios in matrix order, and qualifies result IDs with the viewport name (for
+example `mobile::navigation.open`). Scenario-level `viewports` limits a scenario to named
+entries from the matrix:
+
+```yaml
+viewports:
+  - { name: desktop, width: 1280, height: 800 }
+  - { name: mobile, width: 390, height: 844 }
+
+scenarios:
+  - id: mobile-navigation
+    viewports: [mobile]
+    steps:
+      - { id: navigation.open-page, action: navigate, url: /chats/chat-123 }
+      - { id: navigation.no-overflow, action: expect_no_horizontal_overflow }
+      - { id: navigation.menu-visible, action: expect_visible, target: { testid: mobile-nav-trigger } }
+      - { id: navigation.open, action: click, target: { testid: mobile-nav-trigger } }
+      - { id: navigation.expanded, action: expect_attribute, target: { testid: mobile-nav-trigger }, attribute: aria-expanded, value: "true" }
+      - { id: navigation.dialog, action: expect_visible, target: { role: dialog, name: "Navigation" } }
+      - { id: navigation.escape, action: press, key: Escape }
+      - { id: navigation.closed, action: expect_hidden, target: { role: dialog, name: "Navigation" } }
+
+  - id: sticky-shell
+    steps:
+      - { id: sticky.open-page, action: navigate, url: /chats/chat-123 }
+      - { id: sticky.scroll, action: scroll, target: { testid: main-content }, y: 800 }
+      - { id: sticky.topbar, action: expect_stuck_to_top, target: { testid: app-topbar }, tolerance_px: 2 }
+```
+
+Matrix contexts isolate browser state, not ChatDB state. Mutation scenarios should use
+unique fixture values, clean up their rows, or opt into only one viewport. Use
+`set_viewport` when a single scenario specifically needs to verify a live resize rather
+than repeat across the matrix; the configured matrix size is restored before the next
+scenario.
+
+The responsive shell contract and minimum assertions are in
+`../references/developer-guide/responsive-live-apps.md`.
 
 ## Authentication
 
