@@ -485,6 +485,7 @@ export function ErrorState({ title = 'Something went wrong', message, onRetry, c
 // ----------------------------------------------------------------------------
 
 const _FOCUSABLE = 'a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])';
+const _focusTrapStack = [];
 
 /**
  * Trap Tab focus inside `ref` while `active`, move focus in on open, restore it
@@ -498,6 +499,8 @@ export function useFocusTrap(ref, active, onEscape) {
         if (!active || !ref.current) return undefined;
         const node = ref.current;
         const previouslyFocused = document.activeElement;
+        const stackEntry = { node, origin: previouslyFocused };
+        _focusTrapStack.push(stackEntry);
         const focusables = node.querySelectorAll(_FOCUSABLE);
         (focusables[0] || node).focus();
 
@@ -521,9 +524,93 @@ export function useFocusTrap(ref, active, onEscape) {
         node.addEventListener('keydown', onKeyDown);
         return () => {
             node.removeEventListener('keydown', onKeyDown);
-            if (previouslyFocused && previouslyFocused.focus) previouslyFocused.focus();
+            const index = _focusTrapStack.indexOf(stackEntry);
+            const wasTop = index === _focusTrapStack.length - 1;
+            if (index >= 0) {
+                // If an underlying overlay disappears first, retarget overlays
+                // opened from inside it to the underlying overlay's own origin.
+                _focusTrapStack.slice(index + 1).forEach((entry) => {
+                    if (entry.origin && node.contains(entry.origin)) {
+                        entry.origin = stackEntry.origin;
+                    }
+                });
+                _focusTrapStack.splice(index, 1);
+            }
+            const target = stackEntry.origin;
+            if (wasTop && target && target.focus && target.isConnected !== false && !target.inert) {
+                target.focus();
+            }
         };
     }, [active, ref, onEscape]);
+}
+
+let _bodyScrollLockCount = 0;
+let _bodyOverflowBeforeLock = '';
+const _backgroundIsolationLocks = new Map();
+
+function _lockBodyScroll() {
+    if (_bodyScrollLockCount === 0) {
+        _bodyOverflowBeforeLock = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+    }
+    _bodyScrollLockCount += 1;
+}
+
+function _unlockBodyScroll() {
+    _bodyScrollLockCount = Math.max(0, _bodyScrollLockCount - 1);
+    if (_bodyScrollLockCount === 0) {
+        document.body.style.overflow = _bodyOverflowBeforeLock;
+    }
+}
+
+function _isolateBackgroundElement(element) {
+    let record = _backgroundIsolationLocks.get(element);
+    if (!record) {
+        record = {
+            count: 0,
+            supportsInert: 'inert' in element,
+            inert: element.inert,
+            hadAriaHidden: element.hasAttribute('aria-hidden'),
+            ariaHidden: element.getAttribute('aria-hidden')
+        };
+        _backgroundIsolationLocks.set(element, record);
+    }
+    record.count += 1;
+    if (record.supportsInert) element.inert = true;
+    else element.setAttribute('aria-hidden', 'true');
+}
+
+function _restoreBackgroundElement(element) {
+    const record = _backgroundIsolationLocks.get(element);
+    if (!record) return;
+    record.count -= 1;
+    if (record.count > 0) return;
+    if (record.supportsInert) element.inert = record.inert;
+    if (record.hadAriaHidden) element.setAttribute('aria-hidden', record.ariaHidden);
+    else element.removeAttribute('aria-hidden');
+    _backgroundIsolationLocks.delete(element);
+}
+
+/**
+ * Lock body scrolling and make siblings of a modal overlay inactive. Locks are
+ * reference-counted so nested/overlapping Drawer and Modal instances restore
+ * the original document state only after the final overlay closes.
+ */
+function useOverlayIsolation(overlayRef, active) {
+    useEffect(() => {
+        if (!active || typeof document === 'undefined' || !document.body) return undefined;
+        _lockBodyScroll();
+        const overlay = overlayRef.current;
+        const parent = overlay && overlay.parentElement;
+        const siblings = parent
+            ? Array.prototype.filter.call(parent.children, (element) => element !== overlay)
+            : [];
+        siblings.forEach(_isolateBackgroundElement);
+        return () => {
+            siblings.forEach(_restoreBackgroundElement);
+            _unlockBodyScroll();
+        };
+    }, [active, overlayRef]);
 }
 
 // ----------------------------------------------------------------------------
@@ -548,20 +635,16 @@ const _MODAL_SIZES = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max
  * @returns {React.ReactElement|null}
  */
 export function Modal({ open, onClose, title, children, footer, size = 'md', closeOnBackdrop = true } = {}) {
+    const overlayRef = useRef(null);
     const panelRef = useRef(null);
     const titleId = useId('modal-title');
+    useOverlayIsolation(overlayRef, open);
     useFocusTrap(panelRef, open, onClose);
-
-    useEffect(() => {
-        if (!open) return undefined;
-        const prev = document.body.style.overflow;
-        document.body.style.overflow = 'hidden';
-        return () => { document.body.style.overflow = prev; };
-    }, [open]);
 
     if (!open) return null;
 
     const overlay = h('div', {
+        ref: overlayRef,
         className: 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/70',
         onMouseDown: (e) => { if (closeOnBackdrop && e.target === e.currentTarget) onClose && onClose(); }
     },
@@ -1081,20 +1164,34 @@ export function PageHeader({ title, description, actions, className } = {}) {
  * @param {React.ReactNode} [props.title]
  * @param {React.ReactNode} [props.children]
  * @param {string} [props.width] Tailwind width class (default 'w-80').
+ * @param {string} [props.id] Optional panel id for aria-controls.
+ * @param {string} [props.testId] Optional data-testid on the panel.
+ * @param {boolean} [props.closeOnBackdrop]
  * @returns {React.ReactElement|null}
  */
-export function Drawer({ open, onClose, side = 'right', title, children, width = 'w-80' } = {}) {
+export function Drawer({
+    open, onClose, side = 'right', title, children, width = 'w-80',
+    id, testId, closeOnBackdrop = true
+} = {}) {
+    const overlayRef = useRef(null);
     const panelRef = useRef(null);
     const titleId = useId('drawer-title');
+    useOverlayIsolation(overlayRef, open);
     useFocusTrap(panelRef, open, onClose);
+
     if (!open) return null;
     const sideCls = side === 'left' ? 'left-0' : 'right-0';
     const node = h('div', {
+        ref: overlayRef,
         className: 'fixed inset-0 z-50 bg-black/40 dark:bg-black/60',
-        onMouseDown: (e) => { if (e.target === e.currentTarget) onClose && onClose(); }
+        onMouseDown: (e) => {
+            if (closeOnBackdrop && e.target === e.currentTarget) onClose && onClose();
+        }
     },
         h('div', {
             ref: panelRef,
+            id,
+            'data-testid': testId,
             role: 'dialog',
             'aria-modal': 'true',
             'aria-labelledby': title ? titleId : undefined,
@@ -1103,7 +1200,7 @@ export function Drawer({ open, onClose, side = 'right', title, children, width =
         },
             h('div', { className: 'flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700' },
                 title ? h('h2', { id: titleId, className: 'text-sm font-semibold text-gray-900 dark:text-gray-100' }, title) : h('span', null),
-                h(IconButton, { label: 'Close panel', onClick: onClose }, '\u2715')
+                h(IconButton, { label: 'Close panel', onClick: onClose, className: 'min-h-11 min-w-11' }, '\u2715')
             ),
             h('div', { className: 'flex-1 overflow-y-auto p-4 text-sm text-gray-700 dark:text-gray-200' }, children)
         )
@@ -1116,6 +1213,147 @@ export function Drawer({ open, onClose, side = 'right', title, children, width =
 
 /** Alias: a Drawer is the off-canvas Sidebar these apps use interchangeably. */
 export const Sidebar = Drawer;
+
+// ----------------------------------------------------------------------------
+// Responsive application shell
+// ----------------------------------------------------------------------------
+
+const _APP_SHELL_BREAKPOINTS = {
+    sm: { desktop: 'sm:flex', mobile: 'sm:hidden', query: '(min-width: 640px)' },
+    md: { desktop: 'md:flex', mobile: 'md:hidden', query: '(min-width: 768px)' },
+    lg: { desktop: 'lg:flex', mobile: 'lg:hidden', query: '(min-width: 1024px)' },
+    xl: { desktop: 'xl:flex', mobile: 'xl:hidden', query: '(min-width: 1280px)' }
+};
+
+function _useMediaQuery(query) {
+    const read = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+        ? window.matchMedia(query).matches
+        : false;
+    const [matches, setMatches] = useState(read);
+    useEffect(() => {
+        if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
+        const media = window.matchMedia(query);
+        const update = () => setMatches(media.matches);
+        update();
+        if (media.addEventListener) media.addEventListener('change', update);
+        else media.addListener(update);
+        return () => {
+            if (media.removeEventListener) media.removeEventListener('change', update);
+            else media.removeListener(update);
+        };
+    }, [query]);
+    return matches;
+}
+
+function _menuIcon() {
+    return h('svg', {
+        viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2,
+        className: 'h-5 w-5', 'aria-hidden': 'true'
+    },
+        h('path', { strokeLinecap: 'round', d: 'M4 6h16M4 12h16M4 18h16' })
+    );
+}
+
+/**
+ * Responsive Live App shell with a persistent desktop sidebar and an accessible
+ * mobile navigation drawer. The top bar remains outside the main scroll region,
+ * which avoids the common iframe double-scroll and non-sticky-header failures.
+ *
+ * `navigation` may be a React node or a render function receiving
+ * `{ closeNavigation }`. Anchor clicks and controls marked
+ * `data-navigation-item="true"` also close the mobile drawer automatically.
+ *
+ * @param {object} props
+ * @param {React.ReactNode} [props.header]
+ * @param {React.ReactNode} [props.headerActions]
+ * @param {React.ReactNode|function} props.navigation
+ * @param {React.ReactNode} [props.children]
+ * @param {string} [props.appName]
+ * @param {string} [props.navigationLabel]
+ * @param {string} [props.drawerTitle]
+ * @param {string} [props.menuLabel]
+ * @param {'sm'|'md'|'lg'|'xl'} [props.breakpoint]
+ * @param {string} [props.sidebarWidth]
+ * @param {string} [props.className]
+ * @param {string} [props.headerClassName]
+ * @param {string} [props.sidebarClassName]
+ * @param {string} [props.mainClassName]
+ * @returns {React.ReactElement}
+ */
+export function AppShell({
+    header, headerActions, navigation, children, appName = 'App',
+    navigationLabel = 'Primary navigation', drawerTitle = 'Navigation',
+    menuLabel = 'Open navigation', breakpoint = 'lg', sidebarWidth = 'w-64',
+    className, headerClassName, sidebarClassName, mainClassName
+} = {}) {
+    const [navigationOpen, setNavigationOpen] = useState(false);
+    const config = _APP_SHELL_BREAKPOINTS[breakpoint] || _APP_SHELL_BREAKPOINTS.lg;
+    const isDesktop = _useMediaQuery(config.query);
+    const drawerId = useId('mobile-navigation');
+    const closeNavigation = useCallback(() => setNavigationOpen(false), []);
+
+    useEffect(() => {
+        if (isDesktop && navigationOpen) setNavigationOpen(false);
+    }, [isDesktop, navigationOpen]);
+
+    const renderNavigation = () => typeof navigation === 'function'
+        ? navigation({ closeNavigation })
+        : navigation;
+
+    const onMobileNavigationClick = (event) => {
+        const target = event && event.target;
+        if (!target || typeof target.closest !== 'function') return;
+        if (target.closest('a[href], [data-navigation-item="true"]')) closeNavigation();
+    };
+
+    return h('div', {
+        'data-testid': 'app-shell',
+        className: cx('h-screen h-dvh min-h-0 w-full overflow-hidden flex flex-col bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100', className)
+    },
+        h('header', {
+            'data-testid': 'app-topbar',
+            className: cx('sticky top-0 z-40 flex min-h-16 flex-none items-center gap-3 border-b border-gray-200 bg-white px-3 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:px-4', headerClassName)
+        },
+            h('button', {
+                type: 'button',
+                'data-testid': 'mobile-nav-trigger',
+                'aria-label': menuLabel,
+                'aria-controls': drawerId,
+                'aria-expanded': navigationOpen ? 'true' : 'false',
+                onClick: () => setNavigationOpen(true),
+                className: cx('inline-flex h-11 w-11 flex-none items-center justify-center rounded-lg text-gray-700 transition hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:text-gray-200 dark:hover:bg-gray-700', config.mobile)
+            }, _menuIcon()),
+            h('div', { className: 'min-w-0 flex-1', 'aria-label': appName }, header),
+            headerActions ? h('div', { className: 'flex flex-none items-center gap-2' }, headerActions) : null
+        ),
+        h('div', { className: 'flex min-h-0 min-w-0 flex-1' },
+            h('aside', {
+                'data-testid': 'desktop-sidebar',
+                'aria-label': navigationLabel,
+                className: cx('hidden flex-none flex-col overflow-y-auto border-r border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800', config.desktop, sidebarWidth, sidebarClassName)
+            }, renderNavigation()),
+            h('main', {
+                'data-testid': 'main-content',
+                className: cx('min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain', mainClassName)
+            }, children)
+        ),
+        h(Drawer, {
+            open: navigationOpen,
+            onClose: closeNavigation,
+            side: 'left',
+            title: drawerTitle,
+            id: drawerId,
+            testId: 'mobile-sidebar'
+        }, h('div', {
+            role: 'navigation',
+            'aria-label': navigationLabel,
+            onClick: onMobileNavigationClick
+        }, renderNavigation()))
+    );
+}
+
+/** Descriptive alias for AppShell. */
+export const ResponsiveAppShell = AppShell;
 
 // ----------------------------------------------------------------------------
 // FileDropZone
