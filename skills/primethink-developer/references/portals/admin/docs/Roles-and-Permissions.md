@@ -25,6 +25,23 @@ Each role has the following properties:
 | `description`    | `string` | Human-readable description of the role           |
 | `is_system_role` | `bool`   | `true` if this is a built-in platform role       |
 
+## Per-Task Role Access
+
+A task can grant access to one or more roles in addition to its normal owner and task-type rules. A user whose current group role is assigned to the task:
+
+- Sees the task in task lists for that group
+- Can open the task even when they are not its owner
+- Passes task checks that normally require owner-level access
+
+This assignment does not change the user's role or add permissions to that role globally. It applies only to the selected task, and task responses expose the assignment as an `assigned_roles` list containing each role's `id` and `name`.
+
+Removing a role from the task revokes this additional path for every user with that role. Clearing the assignment list restores the task's normal owner and task-type access rules.
+
+!!! warning "Task-role access is not view-only"
+    A matching role passes checks used for owner-level task operations, not just task discovery. Assign only roles whose members should be allowed to manage and use that task. Continue to give each role the minimum general task permissions it needs.
+
+For API-based assignment, see [Assign Roles to a Task](/developer/API-Examples/#assign-roles-to-a-task).
+
 ---
 
 ## Permission Scopes

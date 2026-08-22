@@ -4,6 +4,26 @@
 
 Live Pages use a powerful JavaScript library (`pt`) that provides database-like operations for managing data. The library is automatically initialized and provides simple CRUD operations with server-side filtering.
 
+## Live App Rate Limits
+
+Requests authenticated with the same Live App scoped token share one fixed-window budget. By default, one token can make **600 requests per 60 seconds**. Reads, writes, action calls, uploads, and asset requests draw from the same budget rather than separate method-specific limits. A deployment can change the limit, window, or whether scoped-token metering is enabled.
+
+When the budget is exhausted, PrimeThink returns HTTP `429 Too Many Requests`:
+
+```json
+{
+  "detail": "Rate limit exceeded"
+}
+```
+
+Use the response headers rather than parsing `detail`:
+
+- `Retry-After` — seconds until requests can be attempted again.
+- `X-RateLimit-Limit` — the configured request ceiling for the window.
+- `X-RateLimit-Remaining` — `0` when the request is rejected.
+
+Wait for `Retry-After` before retrying. Do not use an immediate retry loop, and avoid repeatedly reloading a Live App because each refresh can request multiple assets.
+
 ## Complete API Reference
 
 The PrimeThink API provides a complete set of operations for managing entities and chat context:

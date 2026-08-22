@@ -241,6 +241,73 @@ async function loadInProgressSession() {
 
 ---
 
+## Model Domain Data as Granular Entities
+
+Use one `entity_name` for each domain concept and one entity for each independently editable object. For example, store each task as a `task` entity and each project as a `project` entity. This lets the ChatDB panel, AI tools, and real-time change events address individual records.
+
+Do not put the entire application state into one large JSON entity. Also avoid creating "display-copy" entities that the app does not read; duplicated representations can silently drift apart. Singleton entities are still appropriate for genuinely singular values such as UI preferences, the current view, or a form draft.
+
+## Initialize Demo Data Once
+
+Keep demo or starter content in code only as seed input. Copy it into ChatDB during first-time initialization, then render and update only the ChatDB entities. Do not continue rendering from the seed constants, and do not overwrite existing data on reload.
+
+```javascript
+const SEED_VERSION = 'project-demo-v1';
+const DEMO_DATA = {
+  project: [
+    { name: 'Website launch', status: 'active' }
+  ],
+  task: [
+    { title: 'Review homepage', status: 'open' },
+    { title: 'Publish release notes', status: 'open' }
+  ]
+};
+
+async function ensureDemoData() {
+  const markers = await pt.list({
+    entityNames: ['app_seed'],
+    filters: { version: SEED_VERSION },
+    limit: 1
+  });
+  if (markers.length > 0) return;
+
+  for (const [entityName, rows] of Object.entries(DEMO_DATA)) {
+    // Avoid duplicates if an earlier initialization stopped partway through.
+    const existing = await pt.list({
+      entityNames: [entityName],
+      limit: 1
+    });
+
+    if (existing.length === 0) {
+      const results = await pt.batchAdd(entityName, rows);
+      const failed = results.filter(result => !result.success);
+      if (failed.length > 0) {
+        throw new Error(`Failed to seed ${entityName}`);
+      }
+    }
+  }
+
+  // Add the marker only after every entity type is ready.
+  await pt.add('app_seed', {
+    version: SEED_VERSION,
+    seeded_at: new Date().toISOString()
+  });
+}
+
+async function initializeApp() {
+  await ensureDemoData();
+
+  // ChatDB is now the source of truth; do not render DEMO_DATA directly.
+  const projects = await pt.list({ entityNames: ['project'] });
+  const tasks = await pt.list({ entityNames: ['task'] });
+  renderApp({ projects, tasks });
+}
+```
+
+Only an explicit reset action should delete the application's rows and seed marker before running the initializer again. Never reset or re-seed data automatically during normal startup.
+
+---
+
 ## What NOT to Store in Database
 
 Some data should remain in memory only:

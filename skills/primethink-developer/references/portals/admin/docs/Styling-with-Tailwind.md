@@ -2,11 +2,11 @@
 
 ## Overview
 
-Live Pages have full support for **Tailwind CSS**, a utility-first CSS framework that allows you to rapidly build modern user interfaces. The platform does not inject Tailwind — each app declares and pins its own Tailwind version in its `<head>`. Include the standard setup block from [Tailwind CSS v4 Setup](Live-Apps-Tailwind-v4.md) before using the patterns on this page.
+Live Pages have full support for **Tailwind CSS**, a utility-first CSS framework that allows you to rapidly build modern user interfaces. PrimeThink does not inject Tailwind. Dynamic/no-build apps load the pinned browser build in source HTML; compiled React/Vite apps install Tailwind and emit CSS during the build. Choose the correct workflow in [Tailwind CSS v4 Setup](Live-Apps-Tailwind-v4.md) before using the patterns on this page.
 
 ## Dark Mode Support
 
-Live Pages support dark and light mode following the PrimeThink theme setting. The theme bootstrap included in the [Tailwind CSS v4 Setup](Live-Apps-Tailwind-v4.md) block sets the `dark` or `light` class on the `<html>` element, and your app should include styles for both modes.
+Live Pages support dark and light mode following the PrimeThink theme setting. Both Tailwind workflows retain the [host-theme bootstrap and class-based dark variant](Live-Apps-Tailwind-v4.md#dark-mode), which set the `dark` or `light` class on `<html>`. Your app should include styles for both modes.
 
 **How it works:**
 - The `dark` class is added to the `<html>` element when dark mode is active
@@ -74,7 +74,7 @@ Live Pages support dark and light mode following the PrimeThink theme setting. T
 * **Consistent design**: Use Tailwind's design system for cohesive styling
 * **Responsive by default**: Built-in responsive utilities
 * **No CSS conflicts**: Utility classes eliminate CSS specificity issues
-* **Per-app setup**: Include and pin Tailwind using the standard setup block from [Tailwind CSS v4 Setup](Live-Apps-Tailwind-v4.md)
+* **Per-app setup**: Pin the browser build for a dynamic app or the npm/Vite packages for a compiled app, as described in [Tailwind CSS v4 Setup](Live-Apps-Tailwind-v4.md)
 
 ## Basic Usage
 

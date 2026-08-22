@@ -32,6 +32,15 @@ Group Conversations, often referred to as Multi-User Chats in the [User Interfac
 * **Collaboration Tools:** Members (depending on permissions) can upload files, manage [Collections](Collections.md), schedule [Tasks](/admin/Tasks/), and more. See [AI Assistant Tools](/admin/AI-Assistant-Tools/) for chat organization capabilities like Memos and Subchats.
 * **Memory:** Note that in Multi-User chats, the AI's Memory capability is typically disabled by default to protect privacy; the system will not automatically learn from or store user messages in its persistent memory. ([User Interface Reference](User-Interface.md#chat-types)).
 
+### Collaboration Between AI Assistants
+
+When multiple AI assistants are members of the same chat, the active assistant can privately delegate specialist work to another member. The member assistant works with its own description, reply style, model, capabilities, and attached knowledge, then returns its result to the active assistant. The active assistant uses that result when composing the response you see.
+
+This automatic delegation is private and synchronous: it does not add a separate message from the member assistant to the conversation. If you want an assistant to answer visibly as itself, mention it with `@` instead.
+
+!!! note "Member knowledge is available for collaboration"
+    An assistant's attached documents and active collections can be consulted when it works as a member of the chat. Only add AI assistants whose knowledge is appropriate to share in that conversation.
+
 **Permissions in Group Conversations:**
 
 Permissions within a Group Conversation are **dictated by the type of Workspace** it resides in.

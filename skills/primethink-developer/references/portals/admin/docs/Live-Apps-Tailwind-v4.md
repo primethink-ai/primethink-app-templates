@@ -2,19 +2,25 @@
 
 ## Overview
 
-Live Apps use Tailwind CSS for all styling. **Each app declares and pins its own Tailwind version** inside the file — the platform does not inject any Tailwind stylesheet or script.
+PrimeThink does not inject Tailwind. A Live App that uses Tailwind must declare and pin it using the setup appropriate to the app's build model.
+
+| Live App model | How Tailwind runs | What you deploy |
+|---|---|---|
+| **Dynamic/no-build HTML or browser-transpiled React** | The pinned `@tailwindcss/browser` script compiles classes at runtime in the browser | Source `index.html` (and documented flat source files) |
+| **Compiled React/Vite** | Installed `tailwindcss` and `@tailwindcss/vite` packages generate CSS during `npm run build` | Only the flat files inside `dist/` |
+| **No Tailwind** | Use ordinary CSS; no Tailwind dependency is required | The app's normal deployment artifact |
 
 **Version policy:**
 
-* **All new Live Apps must use Tailwind CSS v4** via the pinned browser build described on this page
-* **Existing apps** carry their own pinned Tailwind v3 script (`https://cdn.tailwindcss.com/3.4.17`) and continue to work unchanged. They are migrated to v4 individually — see [Migrating an Existing App](#migrating-an-existing-v3-app-to-v4)
-* **Never mix versions.** One app = one Tailwind version. Do not add v4 to a file that still contains v3-idiom classes or a `tailwind.config` block, and never load both scripts
+* **New apps that use Tailwind should use Tailwind CSS v4**, but they must use the installation method for their build model. The browser build is for dynamic/no-build apps only; compiled apps use the Vite integration.
+* **Existing dynamic apps** carrying a pinned Tailwind v3 script (`https://cdn.tailwindcss.com/3.4.17`) continue to work unchanged. Migrate them individually — see [Migrating an Existing Dynamic v3 App](#migrating-an-existing-dynamic-v3-app-to-v4).
+* **Never mix versions or workflows.** Do not load `@tailwindcss/browser` in a compiled Vite app, do not ship npm source files as a dynamic app, and never load v3 and v4 together.
 
-Tailwind v4's browser build compiles utility classes at runtime in the browser with no build step, exactly like the v3 Play CDN it replaces. It observes DOM mutations, so classes introduced by dynamic `innerHTML` rendering — the standard Live Apps pattern — are compiled on the fly. No re-initialisation is required after rendering.
+## Dynamic/no-build installation {#dynamic-no-build-installation}
 
-## Installation
+Use this workflow for a simple HTML/JavaScript Live App or a dynamic React app that PrimeThink transpiles in the browser. Tailwind v4's browser build compiles utility classes at runtime with no npm or build step. It observes DOM mutations, so classes introduced by dynamic `innerHTML` rendering are compiled on the fly; no re-initialisation is required.
 
-Add the following to the `<head>` of the app file. This block is the standard boilerplate for every new Live App; include it verbatim and pin the exact version.
+Add the following to the `<head>` of the app's source HTML. Include it verbatim and pin the exact version.
 
 ```html
 <!-- Tailwind CSS v4 — pinned browser build -->
@@ -56,8 +62,73 @@ Add the following to the `<head>` of the app file. This block is the standard bo
 </script>
 ```
 
-!!! warning "There is no `tailwind.config` in v4"
-    The v4 browser build does **not** read the `tailwind.config = {...}` JavaScript object used with the v3 Play CDN. Delete any such block (including `suppressWarning`) when migrating — it is silently ignored. All configuration is CSS-first, inside the `<style type="text/tailwindcss">` block.
+!!! warning "There is no `tailwind.config` in the browser build"
+    The v4 browser build does **not** read the `tailwind.config = {...}` JavaScript object used with the v3 Play CDN. Delete any such block (including `suppressWarning`) when migrating — it is silently ignored. Configuration is CSS-first, inside the `<style type="text/tailwindcss">` block.
+
+## Compiled React/Vite installation
+
+Use this workflow for the default compiled React starter and other apps with an npm/Vite build. Tailwind scans the source and emits normal CSS during the production build; the user's browser does not run the Tailwind compiler.
+
+The PrimeThink React/Vite starter already pins and wires Tailwind. Run `npm install`, edit the source, and build it as documented in the generated `README.md`. For a manual Vite setup, pin both packages:
+
+```bash
+npm install --save-dev tailwindcss@4.3.3 @tailwindcss/vite@4.3.3
+```
+
+Register the Vite plugin:
+
+```javascript
+// vite.config.js
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
+
+export default defineConfig({
+  // PrimeThink serves the built files below a chat-specific path.
+  base: './',
+  plugins: [react(), tailwindcss()],
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+    // Keep the deployment artifact flat.
+    assetsDir: '.',
+    rollupOptions: {
+      output: {
+        entryFileNames: 'app-[hash].js',
+        chunkFileNames: 'chunk-[hash].js',
+        assetFileNames: '[name]-[hash][extname]'
+      }
+    }
+  }
+});
+```
+
+Import Tailwind and retain class-based dark mode in the app stylesheet:
+
+```css
+/* src/index.css */
+@import "tailwindcss";
+
+/* PrimeThink controls dark mode with a class on <html>. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  button:not(:disabled), [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+```
+
+Ensure the application entry imports that stylesheet, retain the host-theme bootstrap in `index.html`, then build:
+
+```bash
+npm run build
+```
+
+Deploy the **top-level contents of `dist/`**, not the source project or the `dist` directory itself. The compiled Live App uses page type **HTML**. Do not add the `@tailwindcss/browser` script or a `text/tailwindcss` block to the built `index.html`; the generated CSS already contains Tailwind's output.
+
+!!! important "Compile-time class discovery"
+    A compiled app does not watch DOM mutations for new class names. Keep complete utility names visible in source, or map runtime values to complete literal class strings. Avoid constructing names such as `` `bg-${color}-500` ``, because the build may not generate those utilities.
 
 ## Dark Mode
 
@@ -70,11 +141,11 @@ Usage in markup is unchanged from v3: style with `dark:` variants throughout.
 </div>
 ```
 
-What changed is the mechanism underneath: v4's default dark mode follows the OS (`prefers-color-scheme`). The `@custom-variant dark` line in the installation block switches it to the class strategy, and the theme bootstrap applies the `dark`/`light` class to `<html>` from the host's `?theme=` parameter (falling back to the OS setting), with live updates via `pt:theme` postMessage. Both pieces are mandatory — an app missing either will ignore the user's PrimeThink theme setting.
+What changed is the mechanism underneath: v4's default dark mode follows the OS (`prefers-color-scheme`). The `@custom-variant dark` declaration switches it to the class strategy. Put that declaration in the `text/tailwindcss` block for a dynamic app or the imported source stylesheet for a compiled app. In both workflows, the theme bootstrap applies the `dark`/`light` class to `<html>` from the host's `?theme=` parameter (falling back to the OS setting), with live updates via the `pt:theme` postMessage. Both pieces are mandatory.
 
 ## Custom Theme Values
 
-Custom colours, fonts, and other design tokens are declared with `@theme` inside the same `text/tailwindcss` block. Declared values generate the corresponding utilities automatically:
+Custom colours, fonts, and other design tokens are declared with `@theme`. Put it in the `text/tailwindcss` block for a dynamic app or the imported CSS source file for a compiled app. Declared values generate the corresponding utilities automatically:
 
 ```html
 <style type="text/tailwindcss">
@@ -114,18 +185,21 @@ Models and developers alike have years of v3 habit; these are the changes that b
 * **Borders default to `currentColor`**, not gray-200. Every `border`, `border-t/b/l/r` and `divide-*` must carry an explicit colour: `border-gray-200 dark:border-gray-700`
 * **Default ring** is 1px `currentColor` (was 3px blue). Always specify width and colour: `focus:ring-2 focus:ring-blue-500`
 * **Placeholder text** inherits the current colour at 50% opacity (was gray-400). Add `placeholder-gray-400 dark:placeholder-gray-500` on inputs where it matters
-* **Buttons** default to `cursor: default` — restored to `pointer` globally by the installation block above
+* **Buttons** default to `cursor: default` — restore `pointer` in the browser-build block or compiled source stylesheet as shown above
 * **`hover:` styles** only apply on devices that actually support hover; touch devices no longer emulate it
 
-### Dynamic rendering
+### Dynamic class names
 
-No change in behaviour: utilities appearing in dynamically built `innerHTML` compile automatically. Unlike component libraries, Tailwind itself needs no re-initialisation call after rendering.
+The behavior depends on the workflow:
 
-## Migrating an Existing v3 App to v4
+* **Dynamic/no-build browser build:** utilities appearing in dynamically inserted markup compile automatically. Tailwind needs no re-initialisation call after rendering.
+* **Compiled React/Vite:** classes are discovered at build time. Use complete literal utility names in source (including all variants) rather than assembling class names from fragments at runtime.
+
+## Migrating an Existing Dynamic v3 App to v4
 
 Per-app checklist — apps are migrated individually, not in bulk:
 
-1. Replace `<script src="https://cdn.tailwindcss.com/3.4.17"></script>` (or the unpinned variant) with the full [Installation](#installation) block
+1. Replace `<script src="https://cdn.tailwindcss.com/3.4.17"></script>` (or the unpinned variant) with the full [dynamic/no-build installation](#dynamic-no-build-installation) block
 2. Delete any `tailwind.config = {...}` script block, including `suppressWarning`
 3. Apply the renamed-utilities table **in row order** — the `-sm → -xs` renames must run before the bare `→ -sm` renames, in both static markup and JS-built template strings, matching complete class tokens only. A regex word boundary is not enough: `\bshadow\b` still matches the `shadow` in `shadow-md` because `-` is a non-word character — use a negative lookahead such as `shadow(?![\w-])` so `shadow-md` is left alone
 4. Audit every bare `border`/`divide-*` and add explicit colours
@@ -134,9 +208,9 @@ Per-app checklist — apps are migrated individually, not in bulk:
 
 ## Known Limitations
 
-* **Browser baseline:** v4 requires Safari 16.4+, Chrome 111+, Firefox 128+. Older browsers fail hard, not gracefully — confirm against client browser estates before deploying to restricted environments
-* **CDN dependency:** the pinned script is fetched at load. In networks with restricted egress the app renders unstyled; serving a pinned copy from platform static assets is the mitigation (the per-file pinning model makes this a URL swap)
-* **`@apply` in the browser build is unverified.** `@theme` and `@custom-variant` are supported in `text/tailwindcss` blocks; avoid `@apply` until its support is confirmed — plain utility classes in markup cover all Live App needs
+* **Browser baseline:** Tailwind v4 targets Safari 16.4+, Chrome 111+, and Firefox 128+. Confirm compatibility with client browser estates before deployment.
+* **Dynamic browser build — CDN dependency:** the pinned script is fetched at load. In networks with restricted egress the app renders unstyled; serving a pinned copy from platform static assets is the mitigation.
+* **Dynamic browser build — `@apply` is unverified:** `@theme` and `@custom-variant` are supported in `text/tailwindcss` blocks; avoid `@apply` there until its support is confirmed. This warning does not apply to normal compile-time Tailwind processing.
 
 ## Next Steps
 

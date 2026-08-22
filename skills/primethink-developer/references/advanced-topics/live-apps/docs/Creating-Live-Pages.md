@@ -16,7 +16,10 @@ The Live Page architecture consists of:
 * **Documents**: Function as a virtual file system containing configurations and supporting files
 * **Data Layer**: A JavaScript library (`pt`) that provides CRUD operations for managing entities and data
 
-**Important**: The app declares its own dependencies in its `<head>`. In particular, every app must include the pinned Tailwind setup block described in [Tailwind CSS v4 Setup](Live-Apps-Tailwind-v4.md) — the platform does not inject Tailwind. (The `pt` JavaScript library, by contrast, *is* injected automatically.)
+**Important**: The app owns its dependencies; PrimeThink does not inject Tailwind. Dynamic/no-build HTML or browser-transpiled React apps can load the pinned Tailwind v4 browser build in their source HTML. Compiled React/Vite apps install Tailwind and generate CSS during `npm run build` instead; they must not load the browser build. See [Tailwind CSS v4 Setup](Live-Apps-Tailwind-v4.md) for both workflows. (The `pt` JavaScript library, by contrast, *is* injected automatically.)
+
+!!! warning "The `pt` runtime is available only inside PrimeThink"
+    PrimeThink injects the `pt` API and its ChatDB authentication context only when it serves the app inside a PrimeThink chat. A copy deployed to an external host does not receive `pt` or PrimeThink credentials. For external deployments, use a separate backend and authentication, keep data features available only in the PrimeThink live view, or provide a preview/demo fallback.
 
 ## Quick Start
 
@@ -86,7 +89,7 @@ const result = await pt.saveDocument('report.pdf', 'PDF', 'application/pdf', '# 
 
 ### Simple Todo Example
 
-The example below shows the `<body>` content only — place it inside a full HTML file whose `<head>` contains the [Tailwind CSS v4 Setup](Live-Apps-Tailwind-v4.md) block.
+The example below is a dynamic/no-build HTML example and shows the `<body>` content only. Place it inside a full HTML file whose `<head>` contains the [Tailwind v4 browser-build setup](Live-Apps-Tailwind-v4.md#dynamic-no-build-installation). In a compiled React/Vite app, use the equivalent JSX and let the build generate the CSS.
 
 ```html
 <div class="container mx-auto p-6">
@@ -206,7 +209,7 @@ Entities returned by `pt.list()` and `pt.get()` have this structure:
 
 ## Styling with Tailwind CSS
 
-Live Pages have full support for **Tailwind CSS**, a utility-first CSS framework. Each app declares and pins its own Tailwind version in its `<head>` — include the standard setup block from [Tailwind CSS v4 Setup](Live-Apps-Tailwind-v4.md).
+Live Pages have full support for **Tailwind CSS**, a utility-first CSS framework. Use the pinned browser build for dynamic/no-build apps, or the installed Vite integration for compiled apps. See [Tailwind CSS v4 Setup](Live-Apps-Tailwind-v4.md) before applying these utility patterns.
 
 ```html
 <div class="bg-blue-500 text-white p-4 rounded-lg shadow-md">

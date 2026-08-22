@@ -1,6 +1,6 @@
 # PrimeThink CLI — Command Reference
 
-Complete reference for every command in the PrimeThink CLI (`pt`), version 1.2.0.
+Complete reference for every command in the PrimeThink CLI (`pt`), version 1.3.3.
 
 Commands are organized into noun groups: `profile`, `live-app`, `chat`, `collection`, `agent`, `task`, `search`, and `image`.
 
@@ -15,6 +15,8 @@ Commands are organized into noun groups: `profile`, `live-app`, `chat`, `collect
   - [`pt install-developer-skill`](#pt-install-developer-skill)
 - [Live Apps: `pt live-app`](#live-apps-pt-live-app)
   - [`pt live-app new`](#pt-live-app-new)
+  - [`pt live-app publish`](#pt-live-app-publish)
+  - [`pt live-app test`](#pt-live-app-test)
 - [Profiles: `pt profile`](#profiles-pt-profile)
   - [`pt profile add`](#pt-profile-add)
   - [`pt profile use`](#pt-profile-use)
@@ -26,6 +28,7 @@ Commands are organized into noun groups: `profile`, `live-app`, `chat`, `collect
   - [`pt chat create`](#pt-chat-create)
   - [`pt chat rename`](#pt-chat-rename)
   - [`pt chat goal`](#pt-chat-goal)
+  - [`pt chat type`](#pt-chat-type)
   - [`pt chat messages`](#pt-chat-messages)
   - [`pt chat archive`](#pt-chat-archive)
   - [`pt chat unarchive`](#pt-chat-unarchive)
@@ -58,8 +61,10 @@ Commands are organized into noun groups: `profile`, `live-app`, `chat`, `collect
   - [`pt task get`](#pt-task-get)
   - [`pt task delete`](#pt-task-delete)
   - [`pt task duplicate`](#pt-task-duplicate)
+  - [`pt task set-public`](#pt-task-set-public)
+  - [`pt task set-private`](#pt-task-set-private)
   - [`pt task publish`](#pt-task-publish)
-  - [`pt task unpublish`](#pt-task-unpublish)
+  - [`pt task test`](#pt-task-test)
   - [`pt task export`](#pt-task-export)
   - [`pt task import`](#pt-task-import)
   - [`pt task create-version`](#pt-task-create-version)
@@ -132,7 +137,7 @@ Display the CLI version.
 
 ```bash
 pt version
-# PrimeThink CLI v1.2.0
+# PrimeThink CLI v1.3.3
 ```
 
 ### `pt whoami`
@@ -150,7 +155,7 @@ pt whoami --profile production
 
 ### `pt mcp`
 
-Run PrimeThink as an [MCP](https://modelcontextprotocol.io) server over stdio, exposing every API command as a tool that MCP clients can call. See [MCP Server (`pt mcp`)](#mcp-server-pt-mcp) for the full tool list and client configuration.
+Run PrimeThink as an [MCP](https://modelcontextprotocol.io) server over stdio, exposing core API management operations as tools that MCP clients can call. See [MCP Server (`pt mcp`)](#mcp-server-pt-mcp) for the full tool list and client configuration.
 
 ```bash
 pt mcp
@@ -227,7 +232,7 @@ pt install-developer-skill --force --ref <TAG_OR_COMMIT>
 
 ## Live Apps: `pt live-app`
 
-Create a local PrimeThink Live App project from a public GitHub template catalog. This group is local-only and does not require an API token or profile. The command downloads files but does not execute generated code or run a package manager.
+Create, publish, synchronize, and test PrimeThink Live Apps. `pt live-app new` is local-only and does not require an API token; the publishing and chat-test commands use the normal profile connection options.
 
 ### `pt live-app new`
 
@@ -296,6 +301,59 @@ A custom repository provides `live-app-templates/manifest.json` at its root. Eac
 ```
 
 Each requested combination must match exactly one entry. For compatibility, repositories without a manifest can use the default catalog's conventional directory names, but new catalogs should always include the manifest.
+
+### `pt live-app publish`
+
+Create a new private Live App task from a project directory, or update one when `--task-id` is supplied. The command reads project metadata, creates a `Production` task version, and synchronizes the flat app artifact into the task's `@app` folder.
+
+```bash
+pt live-app publish DIRECTORY --virtual-assistant-id ID [OPTIONS]
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `--task-id ID` | create | Update this task instead of creating one |
+| `--virtual-assistant-id ID` | required | Agent assigned to the task |
+| `--app-dir DIRECTORY` | auto | Flat artifact directory; otherwise checks `dist/`, `app/`, then project root |
+| `--version-name NAME` | `Production` | Name used for the task version and document versions |
+| `--profile`, `--api-url` | active profile | Connection selection |
+
+The artifact requires `index.html`, or `canvas.html` (uploaded as `index.html`). Files are uploaded at the top level. A same-named remote document receives a new version, preserving its ID and relative references; an identical version is reported as unchanged. If `DIRECTORY/.image.png` exists, it is uploaded as the task image.
+
+```bash
+pt live-app publish ./decision-board --virtual-assistant-id 7
+pt live-app publish ./decision-board --task-id 42 --virtual-assistant-id 7
+```
+
+### `pt live-app test`
+
+Synchronize a Live App into a newly created temporary chat, or update an explicit existing chat in place. The command sets the chat page type to HTML, applies `GOAL.md` when present, and versions/uploads the app files under `@app`.
+
+```bash
+pt live-app test DIRECTORY [OPTIONS]
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `--chat-id CHAT_ID` | create | Reuse this existing chat |
+| `--workspace-id ID` | unset | Workspace for a newly created chat |
+| `--temporary` / `--permanent` | temporary | Lifetime of a newly created chat |
+| `--app-dir DIRECTORY` | auto | Override flat artifact discovery |
+| `--version-name NAME` | `Production` | Document version name |
+| `--open` | off | Open the resulting chat in a browser |
+| `--web-url URL` | derived from API URL | Web URL used for output/opening (defaults to the active profile's API host, mapping `api.` → `app.`) |
+
+```bash
+pt live-app test ./decision-board
+pt live-app test ./decision-board --chat-id CHAT_UUID --open
+```
+
+> **UI testing moved out of the CLI.** Automated Live App UI testing is now a
+> deterministic, plan-driven workflow owned by the `primethink-developer` skill
+> rather than a `pt` subcommand — the skill authors a reviewable
+> `tests/test_plan.yaml`, runs it with a bundled Playwright runner (no LLM in the
+> execution loop), and heals failing selectors. See the skill's UI-testing guide.
+> This removes the CLI's `kiro-cli` dependency.
 
 ---
 
@@ -473,6 +531,17 @@ pt chat goal CHAT_ID (--goal TEXT | --goal-file PATH)
 ```bash
 pt chat goal 123 --goal "Track the Q3 launch checklist"
 pt chat goal 123 --goal-file ./goal.md
+```
+
+### `pt chat type`
+
+Switch a chat between the Live App renderer and the normal chat view. `live-app` maps to API page type `html`; `chat` maps to API page type `chat`.
+
+```bash
+pt chat type CHAT_ID (live-app|chat) [--profile NAME] [--api-url URL]
+
+pt chat type 123 live-app
+pt chat type 123 chat
 ```
 
 ### `pt chat messages`
@@ -998,20 +1067,56 @@ pt task duplicate TASK_ID [--profile NAME] [--api-url URL]
 pt task duplicate 99 | jq '.id'
 ```
 
-### `pt task publish`
+### `pt task set-public`
 
-Make a task public — sets its type to `public` via the task public-status endpoint.
+Make a task public via the task public-status endpoint.
 
 ```bash
-pt task publish TASK_ID [--profile NAME] [--api-url URL]
+pt task set-public TASK_ID [--profile NAME] [--api-url URL]
 ```
 
-### `pt task unpublish`
+### `pt task set-private`
 
-Make a task private — sets its type to `private` via the task public-status endpoint. For other type changes (`group`, `system`, `catalog`), use `pt task update TASK_ID --type TYPE`.
+Make a task private via the task public-status endpoint. For other task types (`group`, `system`, `catalog`), use `pt task update TASK_ID --type TYPE`.
 
 ```bash
-pt task unpublish TASK_ID [--profile NAME] [--api-url URL]
+pt task set-private TASK_ID [--profile NAME] [--api-url URL]
+```
+
+### `pt task publish`
+
+Create a private task from a conventional project directory, or synchronize the metadata into an existing task when `--task-id` is passed.
+
+```bash
+pt task publish DIRECTORY --virtual-assistant-id ID [--task-id ID] [--profile NAME] [--api-url URL]
+```
+
+`GOAL.md` is required and must not be empty. The task name defaults to the directory name and can be overridden by `.name.config`; the description defaults to the name and can be overridden by `.description.config`; optional `INITIAL_PROMPT.md` supplies the initial prompt. Creation uses the same conservative defaults as the reference workflow (private, published, standard chat, optional features disabled). Updating synchronizes name, description, goal, initial prompt, and virtual assistant without replacing unrelated server fields.
+
+```bash
+pt task publish ./tasks/morning-briefing --virtual-assistant-id 7
+pt task publish ./tasks/morning-briefing --task-id 99 --virtual-assistant-id 7
+```
+
+### `pt task test`
+
+Apply a task project's required `GOAL.md` to a newly created chat or an explicit existing chat. Existing chats are switched to normal chat mode.
+
+```bash
+pt task test DIRECTORY [OPTIONS]
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `--chat-id CHAT_ID` | create | Reuse this existing chat |
+| `--workspace-id ID` | unset | Workspace for a newly created chat |
+| `--temporary` / `--permanent` | temporary | Lifetime of a newly created chat |
+| `--open` | off | Open the resulting chat in a browser |
+| `--web-url URL` | derived from API URL | Web URL used for output/opening (defaults to the active profile's API host, mapping `api.` → `app.`) |
+
+```bash
+pt task test ./tasks/morning-briefing
+pt task test ./tasks/morning-briefing --chat-id CHAT_UUID --permanent
 ```
 
 ### `pt task export`
@@ -1233,7 +1338,7 @@ Point an MCP client's server config at `pt mcp`:
 
 ### Tools
 
-Every API command has a tool equivalent. Names are snake_case (e.g. the CLI's `pt chat send` → the `send_message` tool, `pt chat list` → `list_chats`):
+Core API management commands have tool equivalents; local scaffolding and the project publish/test orchestration commands remain CLI workflows. Tool names are snake_case (e.g. the CLI's `pt chat send` → the `send_message` tool, `pt chat list` → `list_chats`):
 
 | Group | Tools |
 |---|---|

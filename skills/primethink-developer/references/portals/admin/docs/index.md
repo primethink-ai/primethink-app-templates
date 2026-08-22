@@ -37,5 +37,5 @@ Build interactive applications inside PrimeThink chats:
 
 ## Other documentation portals
 
-- **[User Documentation](https://docs.primethink.com/)** — for end users of the PrimeThink app
-- **[Developer Documentation](https://docs.primethink.com/developer/)** — REST API, CLI, and external integrations
+- **[User Documentation](https://help.primethink.ai/)** — for end users of the PrimeThink app
+- **[Developer Documentation](https://help.primethink.ai/developer/)** — REST API, CLI, and external integrations

@@ -73,7 +73,7 @@ pt version
 
 You should see output like:
 ```
-PrimeThink CLI v1.1.0
+PrimeThink CLI v1.3.3
 ```
 
 ## Getting Started
@@ -689,22 +689,30 @@ pt task update 99 --description "Updated description"
 pt task update 99 --schedule-nl "every Friday at 17:00"
 ```
 
-### Duplicate, publish, or delete a task
+### Duplicate, publish, test, change visibility, or delete a task
 
 ```bash
 # Clone a task (prints the new task's JSON, including its id)
 pt task duplicate 99
 
+# Publish a conventional task project; GOAL.md is required
+pt task publish ./tasks/briefing --virtual-assistant-id 7
+pt task publish ./tasks/briefing --task-id 99 --virtual-assistant-id 7
+
+# Sync the project goal into a new temporary chat or an existing chat
+pt task test ./tasks/briefing
+pt task test ./tasks/briefing --chat-id CHAT_UUID
+
 # Toggle a task's visibility (its type) between public and private
-pt task publish 99
-pt task unpublish 99
+pt task set-public 99
+pt task set-private 99
 
 # Delete a task — prompts for confirmation unless you pass --yes
 pt task delete 99
 pt task delete 99 --yes
 ```
 
-For type changes other than public/private (e.g. `group` or `catalog`), use `pt task update 99 --type group`.
+A project directory can override its folder name with `.name.config`, its description with `.description.config`, and its initial prompt with `INITIAL_PROMPT.md`. For type changes other than public/private (e.g. `group` or `catalog`), use `pt task update 99 --type group`.
 
 ### Version a task
 
@@ -786,13 +794,36 @@ pt live-app new ./company-app \
 
 The URL must be a public HTTPS GitHub repository. A custom catalog defines its variants in `live-app-templates/manifest.json`; see the [CLI Reference](docs/cli-reference.md#pt-live-app-new) for the schema. Downloads and extracted files are size-limited and validated, and extraction is atomic.
 
+### Publish and test a Live App
+
+After building, the CLI discovers a flat artifact in `dist/`, then `app/`, then the project root. Override discovery with `--app-dir`. The artifact must contain `index.html` or `canvas.html` (deployed as `index.html`).
+
+```bash
+# Create or update the reusable Live App task
+pt live-app publish ./my-live-app --virtual-assistant-id 7
+pt live-app publish ./my-live-app --task-id 42 --virtual-assistant-id 7
+
+# Iterate in a new temporary chat or update one chat in place
+pt live-app test ./my-live-app
+pt live-app test ./my-live-app --chat-id CHAT_UUID --open
+
+# Explicitly switch any existing chat's renderer
+pt chat type CHAT_UUID live-app
+pt chat type CHAT_UUID chat
+```
+
+The commands read `.name.config`, `.description.config`, and optional `GOAL.md`; publish also uploads `.image.png` when present. Same-named app documents are updated as new `Production` versions, preserving their IDs and relative links.
+
+Automated UI testing of a Live App is not part of the CLI. It is a deterministic, plan-driven workflow provided by the `primethink-developer` skill (`pt install-developer-skill`): the skill captures the running app's accessibility snapshot, authors a reviewable `tests/test_plan.yaml`, runs it with a bundled Playwright runner without an LLM in the execution loop, reads the structured results, and heals failing selectors before re-running.
+
 ## MCP Server
 
-Everything the CLI can do, PrimeThink can also expose over the [Model Context
+Core API management operations can also be exposed over the [Model Context
 Protocol (MCP)](https://modelcontextprotocol.io) — the same code, running as a
 server that AI assistants talk to directly. Instead of an assistant shelling out
 to `pt`, it calls typed tools like `send_message`, `list_chats`, `create_task`,
-and `search_documents`.
+and `search_documents`. Local scaffolding and project publish/test orchestration
+remain CLI workflows.
 
 ### When to use it
 
@@ -834,9 +865,10 @@ overrides.
 
 A few things to know:
 
-- Every CLI command has a tool equivalent (messaging, chats, collections, tasks,
-  agents, semantic search, images). Field-heavy tools like `create_task` expose
-  common fields plus an `extra_fields` object for anything else.
+- Core API management operations have tool equivalents (messaging, chats, collections, tasks,
+  agents, semantic search, images). Local scaffolding and project publish/test orchestration
+  remain CLI workflows. Field-heavy tools like `create_task` expose common fields plus an
+  `extra_fields` object for anything else.
 - File and sync tools read and write on the machine where the server runs — your
   own machine, for a locally launched server.
 - Unlike the CLI, delete tools don't prompt for confirmation; your MCP client is

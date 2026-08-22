@@ -181,6 +181,122 @@ curl -X POST \
 
 ---
 
+### Assign Roles to a Task
+
+Grant task-specific access to users through their current group roles.
+
+**Endpoint**: `POST /api/v1/tasks/{task_id}/assign-roles-access`
+
+The authenticated caller must already satisfy the task's owner-level access check. The request is **replace-all**, not incremental: `user_role_ids` becomes the task's complete role assignment set. Send an empty array to remove every assigned role.
+
+```bash
+curl -X POST \
+  "https://api.primethink.ai/api/v1/tasks/42/assign-roles-access" \
+  -H "accept: application/json" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Token YOUR_API_TOKEN_HERE" \
+  -d '{
+    "user_role_ids": [
+      "11111111-2222-3333-4444-555555555555",
+      "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    ]
+  }'
+```
+
+A successful response returns the updated task. Its `assigned_roles` field contains the resolved role IDs and names:
+
+```json
+{
+  "id": 42,
+  "name": "Quarterly reporting",
+  "assigned_roles": [
+    {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "name": "Reporting Analyst"
+    },
+    {
+      "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+      "name": "Finance Manager"
+    }
+  ]
+}
+```
+
+Users whose current group role matches an assignment can discover the task and pass task checks that normally require owner-level access. This is stronger than view-only sharing; assign only roles whose members should manage and use the task.
+
+Possible errors include:
+
+- `400 Bad Request` when one or more supplied role IDs do not exist; the response identifies the missing IDs
+- `403 Forbidden` when the caller does not satisfy the task's owner-level access check
+- `404 Not Found` when the task does not exist
+
+---
+
+### Check and Apply Task Updates to a Chat
+
+Chats created from a task remain linked to that task. Use the check endpoint to determine whether the chat differs from the task's **Production** version, then use the update endpoint to apply that version. A newer non-production draft does not make `update_available` true.
+
+**Check endpoint**: `GET /api/v1/chats/{chat_id}/task-updates/check`
+
+```bash
+curl -X GET \
+  "https://api.primethink.ai/api/v1/chats/123/task-updates/check" \
+  -H "accept: application/json" \
+  -H "Authorization: Token YOUR_API_TOKEN_HERE"
+```
+
+```json
+{
+  "chat_uuid": "11111111-2222-3333-4444-555555555555",
+  "from_task_id": 42,
+  "version_id": 3,
+  "latest_task_version_id": 4,
+  "update_available": true
+}
+```
+
+**Apply endpoint**: `POST /api/v1/chats/{chat_id}/task-updates/update`
+
+```bash
+curl -X POST \
+  "https://api.primethink.ai/api/v1/chats/123/task-updates/update" \
+  -H "accept: application/json" \
+  -H "Authorization: Token YOUR_API_TOKEN_HERE"
+```
+
+The update copies the Production version's task-backed fields into the chat. It also performs a full mirror of the task's Live App `app/` subtree: changed and new files are synchronized, files removed from the task are removed from the chat, and documents outside `app/` are preserved.
+
+A successful response includes per-operation document counts:
+
+```json
+{
+  "detail": "New chat version created and set as production.",
+  "chat_uuid": "11111111-2222-3333-4444-555555555555",
+  "from_task_id": 42,
+  "source_task_version_id": 4,
+  "created_chat_version_number": 8,
+  "fields_to_update": {
+    "version_id": 4
+  },
+  "documents_synced": {
+    "dirs_created": 0,
+    "dirs_removed": 0,
+    "files_synced": 2,
+    "files_added": 1,
+    "files_removed": 1
+  },
+  "documents_warning": null
+}
+```
+
+Document synchronization runs even if there are no scalar-field changes. In that case, `detail` is `No changes detected. No chat version was created.`, `fields_to_update` is empty, and `created_chat_version_number` is `null` or omitted.
+
+Live App file synchronization is best effort. If it fails, the task's other fields and any resulting chat version can still be updated; `documents_synced` is `null` and `documents_warning` contains `Live-app files could not be synced.` Treat a non-null warning as a partial update and retry or verify the chat's `app/` files before serving the Live App.
+
+The apply endpoint returns HTTP 400 if the chat is not linked to a task and HTTP 404 if its source task no longer exists. Standard chat access checks also apply.
+
+---
+
 ### 3. Send Message to Chat
 
 Send a message to a specific chat by ID or mention name.

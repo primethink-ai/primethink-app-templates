@@ -39,6 +39,9 @@ The PrimeThink CLI is installed as `pt` (`pip install primethink-cli`; in the so
 ```
 pt version | install-skill | install-developer-skill
 pt live-app new DIRECTORY [--framework react|html] [--tailwind/--no-tailwind] [--flowbite/--no-flowbite] [--repo-url URL] [--ref REF]
+pt live-app publish DIRECTORY --virtual-assistant-id ID [--task-id ID] [--app-dir DIR]
+pt live-app test DIRECTORY [--chat-id CHAT_ID] [--app-dir DIR] [--open]
+# Automated UI testing is not a CLI command — it lives in the primethink-developer skill (plan-driven, deterministic Playwright runner).
 pt mcp                                    # run PrimeThink as an MCP server over stdio (needs the [mcp] extra, Python 3.10+)
 pt whoami [--profile NAME]                # {"user": …, "groups": …} — verify which account a profile hits
 pt profile add -t TOKEN [-p NAME] [-u URL] | use PROFILE | list | remove PROFILE
@@ -49,6 +52,7 @@ pt chat list [--page N] [--page-size N] [--search TEXT] [--starred] [--archived]
 pt chat create [--name N] [--goal G | --goal-file F] [--virtual-assistant-id ID] [--type standard|direct_users] [--public] [--member USER_ID]...
 pt chat rename CHAT_ID NAME
 pt chat goal CHAT_ID (--goal G | --goal-file F)
+pt chat type CHAT_ID live-app|chat         # API page_type html|chat
 pt chat messages CHAT_ID [--size N] [--before-message-id ID | --after-message-id ID] [--anchor-message-id ID]   # cursor pagination, NOT --page; before XOR after; anchor overrides both
 pt chat archive CHAT_ID | unarchive CHAT_ID
 pt chat delete CHAT_ID [--yes]            # DESTRUCTIVE; prompts unless --yes; prefer archive
@@ -79,7 +83,9 @@ pt task update TASK_ID [fields…]          # PATCH: only passed fields change; 
 pt task get TASK_ID
 pt task delete TASK_ID [--yes]            # DESTRUCTIVE; prompts unless --yes
 pt task duplicate TASK_ID
-pt task publish TASK_ID | unpublish TASK_ID   # type → public | private; other types: task update --type
+pt task set-public TASK_ID | set-private TASK_ID   # visibility; other types: task update --type
+pt task publish DIRECTORY --virtual-assistant-id ID [--task-id TASK_ID]
+pt task test DIRECTORY [--chat-id CHAT_ID] [--temporary|--permanent] [--open]
 pt task export TASK_ID [-o FILE]          # portable config JSON (server fields stripped)
 pt task import FILE [--profile ENV]       # create a NEW task from an exported file
 pt task create-version TASK_ID [--version-name NAME]      # default name: Production
@@ -131,7 +137,7 @@ Defaults are React + Tailwind + Flowbite. Flowbite requires Tailwind, so never p
 
 ## MCP server
 
-The same code runs as an MCP server via `pt mcp` (stdio), exposing every command above as a tool (`send_message`, `list_chats`, `create_task`, `search_documents`, …). It needs the optional `mcp` extra: `pip install 'primethink-cli[mcp]'` (Python 3.10+). Prefer `pt mcp` when configuring an MCP client to give it PrimeThink tools; keep using the `pt` commands here for direct shell/scripting work. Auth is shared — set `PRIMETHINK_TOKEN` in the client's server env or rely on the active profile.
+The same code runs as an MCP server via `pt mcp` (stdio), exposing the core API management operations as tools (`send_message`, `list_chats`, `create_task`, `search_documents`, …). Local scaffolding and the project publish/test orchestration commands remain CLI workflows. The MCP server needs the optional `mcp` extra: `pip install 'primethink-cli[mcp]'` (Python 3.10+). Prefer `pt mcp` when configuring an MCP client to give it PrimeThink tools; keep using the `pt` commands here for direct shell/scripting work. Auth is shared — set `PRIMETHINK_TOKEN` in the client's server env or rely on the active profile.
 
 ## Common workflows
 
