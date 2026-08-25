@@ -44,7 +44,7 @@ Based on what you're building, read the appropriate reference before writing cod
 | Dynamic/no-build app — before writing code | `libraries/index.md` — reusable modules to copy instead of re-implementing |
 | Choose dynamic vs compiled Live App | "Choose the Live App workflow" below |
 | Compiled app or Deep1 sandbox build | `references/developer-guide/compiled-live-apps.md` and generated template `README.md` |
-| Any app, dashboard, admin panel, or tool UI | `references/developer-guide/responsive-live-apps.md` — mandatory responsive shell behavior and patterns |
+| Any app, dashboard, admin panel, or tool UI | `references/developer-guide/responsive-live-apps.md` — focused structure selection, device-aware UX, anti-slop, and conditional shell patterns |
 | Automated UI testing of a deployed Live App | `ui-testing/README.md` — plan-driven, deterministic Playwright runner |
 | PrimeThink CLI command/API details | `references/developer-guide/cli/index.md` → exact upstream docs in `docs/` |
 | Live App APIs and patterns | `references/advanced-topics/live-apps/index.md` → specific docs in `docs/` |
@@ -64,7 +64,7 @@ references/
 ├── developer-guide/
 │   ├── summary.md                        # Developer portal summary
 │   ├── compiled-live-apps.md             # Deep1 sandbox build/deploy workflow
-│   ├── responsive-live-apps.md           # Responsive app-shell contract and patterns
+│   ├── responsive-live-apps.md           # Focused app structure, UX, responsive, and shell contract
 │   └── cli/
 │       ├── index.md                      # Generated CLI reference index
 │       └── docs/                         # Exact CLI reference/user guide/skill
@@ -257,8 +257,11 @@ await pt.generateVoice({ text: '...', voice: 'alloy', folder: 'audio' });
 
 ### Live App Rules
 
-- **An "app" is an app, not a webpage.** When the user asks for an app, dashboard, or tool, build an interactive multi-view UI: an app shell (topbar or sidebar navigation) with separate views/routes — use `ptr-router.js` (hash-based, iframe-safe) for React or a view-switcher for HTML. A single long scrolling page is a landing page, not an app, and is the wrong deliverable for these requests.
-- **The app shell must respond to its available frame, not just look good at the developer's viewport.** Keep the top bar available while the main region scrolls; use persistent navigation only while content has usable width, then replace it with an accessible overlay drawer. Avoid document-level horizontal overflow and double iframe scrollbars; keep actions, forms, dialogs, and data views usable on narrow screens. For dynamic React apps reuse `ptr-ui.js` `AppShell`/`ResponsiveAppShell`. Read and implement the full contract in `references/developer-guide/responsive-live-apps.md`, then test desktop, tablet, and mobile sizes with the deterministic UI runner.
+- **An app is a focused operational loop, not a route count.** Start from the user's primary job and shortest successful path. A stateful single-workspace app is a valid app. Use tabs, routes, persistent navigation, or a sidebar only when genuinely distinct, repeatedly accessed workflows require them. Never invent destinations, dashboards, or summary panels merely to make the result look app-like or expose behavior to tests.
+- **Choose the smallest viable structure and adapt the workflow, not just the CSS.** One dominant workflow normally gets one focused workspace; a few distinct workflows may use tabs or a small route set; broad administrative domains may use a sidebar that becomes an accessible drawer. Phone, tablet, and laptop layouts may remove, defer, collapse, or relocate secondary information instead of stacking every desktop panel. Read and implement `references/developer-guide/responsive-live-apps.md`, then run the primary workflow at narrow-touch, medium-touch, and wide-pointer profiles.
+- **Choose creation and editing surfaces deliberately.** Explicit `inline`, `quick add`, or `add from the list` behavior belongs inside or immediately beside the affected collection, with minimum fields first; it is not a separately titled form card on the same page. Use a trigger-opened modal/sheet for a bounded temporary multi-field task and a dedicated view only for a long, multi-step, or independently returnable workflow. Dialog content stays closed and absent from the visible/accessibility trees until its trigger opens it.
+- **The workspace is for work, not permanent product explanation.** Do not place an always-visible welcome, feature summary, or "How it works" card above the primary content. Use task-specific empty states, contextual help, dismissible persisted onboarding when first-use orientation is necessary, and a Help action or `@app/HELP.md` for revisitable guidance. A demo may use one mode-selection gateway; after selection, show the clean operational workspace with only a compact mode switcher or Back action. Demo seeding progress is transient.
+- **Apply an operational anti-slop pass.** Cards represent real objects or hierarchy; do not wrap every heading, form, filter, metric, and list or nest cards when spacing and dividers suffice. Do not add decorative statistics, status-chip collections, activity feeds, equal card grids, duplicated labels, or dark full-width surfaces without a confirmed task. Remove anything whose absence does not reduce task completion, orientation, necessary information, feedback, or trust.
 - **Persist app state in ChatDB — in-memory demo data is a bug.** The starter templates are intentionally BLANK canvases (stack + deployment wiring only): YOU build the data layer, and it must be ChatDB via the injected `pt` global from the first version — hardcoded `useState`-only data means nothing survives a reload and the AI cannot read or edit the app's data. Static mockups with no persistence are acceptable ONLY when the user explicitly asks for one. See "Demo Data (seed-if-empty)" below for the required pattern.
 - **Granular entities, never a state blob.** One `entity_name` per domain type, one row per object (`umbrella`, `booking`, `menu_item`, ...). Do NOT stuff the whole app state into a single JSON singleton: the ChatDB panel shows entities, the AI edits individual rows, and `onEntityChanged` sync works per record — a blob defeats all three. Never create entities the app does not read (seeding "display copies" next to a blob is data duplication that silently drifts).
 - **Never hand-roll PrimeThink API calls.** All data access goes through the injected `pt` global (directly or via `pt-data.js`/`ptr-hooks.js`). Do NOT invent REST endpoints (there is no `/api/chatdb/...`); do NOT `fetch` PrimeThink URLs by hand. If a helper doesn't exist in the libraries, check the references before writing any HTTP call.
@@ -268,7 +271,7 @@ await pt.generateVoice({ text: '...', voice: 'alloy', folder: 'audio' });
 - **Keep the template's root error boundary.** The react starters wrap `<App />` in a `RootErrorBoundary` (main.jsx / index.html) so a render error shows a readable message instead of a black page — never remove it, and keep it when restructuring the entry point.
 - Dynamic HTML apps deploy complete HTML; dynamic React apps use platform-transpiled `index.js`. Compiled React apps deploy the generated `dist/index.html` with page type **HTML**.
 - `window.pt` is injected by PrimeThink. Do not bundle `primethink.js`, add production credentials, call `pt.init()`, or install `pt` from npm.
-- **Host-controlled theme — follow the PrimeThink setting, not the OS.** The host forces the theme via a `?theme=dark|light` URL param plus live `pt:theme` postMessage; apply it as a `dark`/`light` class on `<html>`. Use the class-based dark strategy — `@custom-variant dark (&:where(.dark, .dark *))` (Tailwind v4) or `darkMode: 'class'` (v3) — so `dark:` variants follow that class, NOT `prefers-color-scheme`. Never default the app to `'system'`: an app that tracks the laptop's OS renders dark while PrimeThink is in light mode and ignores the user's theme. See `references/advanced-topics/live-apps/docs/Live-Apps-Tailwind-v4.md`.
+- **Host-controlled theme is a preserved template invariant — follow PrimeThink, not the OS.** Keep the generated bootstrap that reads `?theme=dark|light`, applies the matching class on `<html>`, and handles live `pt:theme` postMessage updates. Theme token files do not replace this bridge; if the entry point is rewritten, port and test the bridge explicitly. Use the class-based dark strategy — `@custom-variant dark (&:where(.dark, .dark *))` (Tailwind v4) or `darkMode: 'class'` (v3) — so `dark:` variants follow that class, never `prefers-color-scheme` or a `'system'` default. Force both query themes against the opposite OS preference and dispatch the live message. In light mode the largest scaffold and primary-workspace surfaces must appear light; token/class correctness alone is insufficient. See `references/advanced-topics/live-apps/docs/Live-Apps-Tailwind-v4.md`.
 - Escape untrusted values before dynamic `innerHTML`; React escapes text by default, so avoid `dangerouslySetInnerHTML`.
 - Never use `localStorage` for app data; use `pt.add/edit/list` (theme preference is the sole exception where documented).
 - Keep the **deployment artifact** flat. Compiled source trees may be nested, but copy only top-level `dist/` contents to `/documents/app/`.
@@ -372,13 +375,21 @@ live view — not by reading the code (the build passes on all of these).
   never `'system'`/`prefers-color-scheme`.
 - [ ] **Data survives a reload.** Create something, refresh — it is still there. If it
   vanished, state is in-memory (`useState` only) instead of ChatDB.
-- [ ] **The application shell works at desktop, tablet, and mobile frame widths.** After
-  scrolling, the top bar remains available; wide navigation becomes an accessible overlay
-  drawer before content is squeezed; menu, Escape, backdrop, route selection, focus trap,
-  and focus return work; primary actions remain reachable; and the document has no horizontal
-  overflow or double scrollbar. Use `references/developer-guide/responsive-live-apps.md` and
-  the viewport-aware assertions in `ui-testing/README.md`—a desktop screenshot alone does
-  not satisfy this check.
+- [ ] **The primary workflow works at phone, tablet, and laptop frame/input profiles.** The
+  primary object and action remain identifiable; secondary desktop regions are removed,
+  collapsed, or relocated rather than blindly stacked; focused fields and submit actions
+  survive the virtual keyboard; and the document has no horizontal overflow or double
+  scrollbar. If persistent navigation exists, also verify desktop navigation, the mobile
+  drawer, Escape, backdrop, route selection, focus trap, and focus return. Do not require a
+  navigation drawer for a focused workspace with no persistent primary navigation.
+- [ ] **Creation surfaces match the requirement.** Inline creation is adjacent to its collection
+  and inserts the result there. Dialog/sheet forms are closed and not focusable initially,
+  open from a trigger, and satisfy focus/dismissal behavior. A long form has a separate view
+  only when its complexity justifies one.
+- [ ] **Guidance and demo chrome do not displace the work.** General explanation is absent from
+  the normal workspace; empty-state guidance disappears when content exists; onboarding
+  dismissal survives reload at its intended scope; Help remains reachable; and a selected
+  demo mode leaves only a compact switcher or Back action.
 
 **Code review before deploy:**
 
@@ -389,7 +400,7 @@ live view — not by reading the code (the build passes on all of these).
   blob.** Every entity the app writes is one it also reads.
 - [ ] **Demo/seed data is seed-if-empty:** seeded once, never re-seeded over existing rows,
   and every render reads from ChatDB — not from the seed constant.
-- [ ] **It is an app, not a landing page:** shell + navigation across separate views/routes.
+- [ ] **The structure matches the workflow:** the primary job is immediately available, every route represents a distinct workflow, and no route, panel, summary, or navigation layer exists only for formal coverage.
 - [ ] **Root error boundary still wraps `<App />`** (readable message instead of a black page).
 - [ ] **No external font/CDN imports** beyond the pinned Tailwind build.
 - [ ] **`pt.edit` spreads existing data** (`{ ...entity.data, ... }`) or uses merge mode.
@@ -415,8 +426,7 @@ For repeatable UI testing of a deployed Live App, use the plan-driven workflow i
 1. Deploy/open the app so there is a live chat URL to test.
 2. Capture the app's **accessibility snapshot** and author `tests/test_plan.yaml`
    from it (a YAML step DSL with semantic `role`/`name`/`text`/`label` targets —
-   never guess selectors from memory). For apps, add the desktop/tablet/mobile
-   viewport matrix and responsive shell assertions from the testing README.
+   never guess selectors from memory). For apps, add the phone/tablet/laptop viewport matrix and primary-workflow assertions from the testing README; add navigation-shell assertions only when persistent navigation exists.
 3. Run it deterministically — no LLM in the execution loop:
    ```bash
    pip install playwright pyyaml && playwright install chromium   # once

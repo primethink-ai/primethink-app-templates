@@ -156,20 +156,40 @@ accessibility snapshot and what rots slowest.
 When `viewports` is omitted, the runner creates one default context and preserves legacy
 step IDs. When it is present, the runner creates an isolated browser context at each size,
 runs scenarios in matrix order, and qualifies result IDs with the viewport name (for
-example `mobile::navigation.open`). Scenario-level `viewports` limits a scenario to named
-entries from the matrix:
+example `phone::primary.add`). Scenario-level `viewports` limits a scenario to named
+entries from the matrix.
+
+Start with the primary workflow, not shell visibility. A focused single-workspace app may
+have no sidebar, router, or mobile navigation drawer:
 
 ```yaml
 viewports:
-  - { name: desktop, width: 1280, height: 800 }
-  - { name: mobile, width: 390, height: 844 }
+  - { name: laptop, width: 1280, height: 800 }
+  - { name: tablet, width: 768, height: 1024 }
+  - { name: phone, width: 390, height: 844 }
 
 scenarios:
+  - id: primary-workflow
+    steps:
+      - { id: primary.open-page, action: navigate, url: /chats/chat-123 }
+      - { id: primary.no-overflow, action: expect_no_horizontal_overflow }
+      - { id: primary.workspace-visible, action: expect_visible, target: { testid: primary-workspace } }
+      - { id: primary.action-visible, action: expect_in_viewport, target: { testid: primary-action } }
+```
+
+Run the same happy path at all applicable profiles. Add assertions for explicit inline
+creation, initially closed trigger-opened dialogs, virtual-keyboard-safe forms, contextual
+help/onboarding, demo-mode handoff, and secondary content that collapses or relocates on
+phone rather than stacking every desktop panel.
+
+Only when the selected information architecture has persistent primary navigation, add
+shell-specific scenarios:
+
+```yaml
   - id: mobile-navigation
-    viewports: [mobile]
+    viewports: [phone]
     steps:
       - { id: navigation.open-page, action: navigate, url: /chats/chat-123 }
-      - { id: navigation.no-overflow, action: expect_no_horizontal_overflow }
       - { id: navigation.menu-visible, action: expect_visible, target: { testid: mobile-nav-trigger } }
       - { id: navigation.open, action: click, target: { testid: mobile-nav-trigger } }
       - { id: navigation.expanded, action: expect_attribute, target: { testid: mobile-nav-trigger }, attribute: aria-expanded, value: "true" }
@@ -190,8 +210,8 @@ unique fixture values, clean up their rows, or opt into only one viewport. Use
 than repeat across the matrix; the configured matrix size is restored before the next
 scenario.
 
-The responsive shell contract and minimum assertions are in
-`../references/developer-guide/responsive-live-apps.md`.
+The focused structure, device-aware UX, conditional shell contract, and minimum assertions
+are in `../references/developer-guide/responsive-live-apps.md`.
 
 ## Authentication
 

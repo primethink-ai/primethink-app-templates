@@ -257,10 +257,12 @@ run('Summarise this as {"summary":"..."}');
 ## React UI & editors
 
 ### `ptr-ui.js`
-38 accessible widgets. `AppShell` (`ResponsiveAppShell` alias) provides the required
-sticky topbar, persistent desktop sidebar, mobile navigation trigger, accessible drawer,
-and a single main scroll region; its navigation may be a node or a render function that
-receives `closeNavigation`. Portals (`Modal`, `Drawer`, `ToastHost`) guard on
+38 accessible widgets. When the app has genuinely distinct persistent destinations,
+`AppShell` (`ResponsiveAppShell` alias) provides a sticky topbar, persistent desktop
+sidebar, mobile navigation trigger, accessible drawer, and a single main scroll region;
+its navigation may be a node or a render function that receives `closeNavigation`. A
+focused single-workspace app does not need `AppShell` or a router; implement the common
+frame, scroll, focus, and device-context rules directly. Portals (`Modal`, `Drawer`, `ToastHost`) guard on
 `ReactDOM.createPortal` with an inline fallback. `Drawer` reference-counts background
 scroll locking with `Modal`, makes background siblings inert (or `aria-hidden` when inert
 is unavailable), and—with `useFocusTrap`—restores focus after Escape/backdrop close. `ConfirmProvider`+
@@ -284,8 +286,8 @@ import { AppShell, ToastProvider, useToast, DataTable, Button } from './ptr-ui.j
 </AppShell>
 ```
 
-Read `../references/developer-guide/responsive-live-apps.md` for the shell contract,
-compiled/HTML equivalents, responsive content patterns, and viewport-matrix tests.
+Read `../references/developer-guide/responsive-live-apps.md` for focused structure selection,
+interaction surfaces, device-aware UX, conditional shell patterns, and viewport-matrix tests.
 
 ### `ptr-editor.js`
 `MarkdownEditor` (toolbar + live preview + word count; preview HTML comes only from
