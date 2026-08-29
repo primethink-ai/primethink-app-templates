@@ -33,7 +33,11 @@ The runner never ships with `pt` — it only runs here, while building an app.
 ## The workflow
 
 1. **Deploy / open the app** in a chat so there is a live URL to test
-   (`https://app.primethink.ai/chats/CHAT_ID`).
+   (`https://app.primethink.ai/chats/CHAT_ID`). From a project directory:
+   `pt live-app test DIR --permanent` once, store the printed chat id in
+   `DIR/.chat-id` (gitignored), then re-run with
+   `--chat-id "$(cat DIR/.chat-id)"` after every rebuild so the plan keeps
+   testing the same chat.
 2. **Snapshot the DOM.** Author against what the app actually renders, not from
    memory. Either use your browser tools to dump the accessibility tree, or run a
    throwaway `navigate` + `snapshot` step and read the written snapshot file.
