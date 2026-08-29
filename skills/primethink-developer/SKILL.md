@@ -184,18 +184,24 @@ pt task publish ./tasks/morning-briefing --virtual-assistant-id 7
 
 set -o pipefail   # without it the pipeline reports awk's status, not pt's
 
-TASK_ID=$(pt task publish ./tasks/morning-briefing --virtual-assistant-id 7 \
-          | tee /dev/stderr | awk -F': ' '/^Task ID: /{print $2}')
-[ -n "$TASK_ID" ] || { echo "publish failed"; exit 1; }
+if ! TASK_ID=$(pt task publish ./tasks/morning-briefing --virtual-assistant-id 7 \
+               | tee /dev/stderr | awk -F': ' '/^Task ID: /{print $2}'); then
+    echo "publish failed"; exit 1
+fi
+[ -n "$TASK_ID" ] || { echo "no Task ID in output"; exit 1; }
 
-APP_TASK_ID=$(pt live-app publish ./decision-board --virtual-assistant-id 7 \
-              | tee /dev/stderr | awk -F': ' '/^Live App task ID: /{print $2}')
-[ -n "$APP_TASK_ID" ] || { echo "publish failed"; exit 1; }
+if ! APP_TASK_ID=$(pt live-app publish ./decision-board --virtual-assistant-id 7 \
+                   | tee /dev/stderr | awk -F': ' '/^Live App task ID: /{print $2}'); then
+    echo "publish failed"; exit 1
+fi
+[ -n "$APP_TASK_ID" ] || { echo "no Live App task ID in output"; exit 1; }
 ```
 
-**Always check the captured ID before using it.** `pt` exits non-zero on failure, but the
-pipeline's status is `awk`'s (`0`) unless `pipefail` is set — so an unchecked capture silently
-yields an empty `TASK_ID` and the next command creates a duplicate instead of updating.
+**Check the status *and* the value — neither alone is enough.** Without `pipefail` the
+pipeline reports `awk`'s `0`, so a failed `pt` yields an empty `TASK_ID` and the follow-up run
+creates a duplicate task instead of updating one. And a publish can print its ID line and
+still exit non-zero — a fatal file-upload failure is reported after the sync summary — so an
+ID that is merely non-empty may come from a publish that did not fully succeed.
 
 Re-run with `--task-id "$TASK_ID"` to update instead of creating a duplicate.
 
@@ -229,10 +235,12 @@ same chat instead of littering the workspace with new ones:
 ```bash
 # first run — create and record
 set -o pipefail
-CHAT_ID=$(pt live-app test ./decision-board --permanent \
-          | tee /dev/stderr \
-          | sed -n 's#^Chat URL: .*/chats/##p')
-[ -n "$CHAT_ID" ] || { echo "test deploy failed"; exit 1; }
+if ! CHAT_ID=$(pt live-app test ./decision-board --permanent \
+               | tee /dev/stderr \
+               | sed -n 's#^Chat URL: .*/chats/##p'); then
+    echo "test deploy failed"; exit 1
+fi
+[ -n "$CHAT_ID" ] || { echo "no Chat URL in output"; exit 1; }
 printf '%s\n' "$CHAT_ID" > ./decision-board/.chat-id
 
 # after every rebuild — same chat
