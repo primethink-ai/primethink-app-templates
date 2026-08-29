@@ -156,8 +156,9 @@ Read `references/developer-guide/compiled-live-apps.md` for variants, safety con
 ## Publishing and Testing Projects (`pt task` / `pt live-app`)
 
 Four orchestration commands turn a **project directory** into a PrimeThink task, or into a
-throwaway chat for trying it out. They print human-readable progress lines, **not JSON** —
-parse the last line, never pipe them to `jq`.
+test chat for trying it out (temporary by default, `--permanent` when you mean to keep it).
+They print human-readable progress lines, **not JSON** — parse the last line, never pipe
+them to `jq`.
 
 | Command | Creates | Needs `GOAL.md` | Final line |
 |---|---|---|---|
@@ -181,12 +182,20 @@ pt task publish ./tasks/morning-briefing --virtual-assistant-id 7
 # Created task 81 from tasks/morning-briefing
 # Task ID: 81
 
+set -o pipefail   # without it the pipeline reports awk's status, not pt's
+
 TASK_ID=$(pt task publish ./tasks/morning-briefing --virtual-assistant-id 7 \
           | tee /dev/stderr | awk -F': ' '/^Task ID: /{print $2}')
+[ -n "$TASK_ID" ] || { echo "publish failed"; exit 1; }
 
 APP_TASK_ID=$(pt live-app publish ./decision-board --virtual-assistant-id 7 \
               | tee /dev/stderr | awk -F': ' '/^Live App task ID: /{print $2}')
+[ -n "$APP_TASK_ID" ] || { echo "publish failed"; exit 1; }
 ```
+
+**Always check the captured ID before using it.** `pt` exits non-zero on failure, but the
+pipeline's status is `awk`'s (`0`) unless `pipefail` is set — so an unchecked capture silently
+yields an empty `TASK_ID` and the next command creates a duplicate instead of updating.
 
 Re-run with `--task-id "$TASK_ID"` to update instead of creating a duplicate.
 
@@ -219,14 +228,20 @@ same chat instead of littering the workspace with new ones:
 
 ```bash
 # first run — create and record
-pt live-app test ./decision-board --permanent \
-  | tee /dev/stderr \
-  | sed -n 's#^Chat URL: .*/chats/##p' > ./decision-board/.chat-id
+set -o pipefail
+CHAT_ID=$(pt live-app test ./decision-board --permanent \
+          | tee /dev/stderr \
+          | sed -n 's#^Chat URL: .*/chats/##p')
+[ -n "$CHAT_ID" ] || { echo "test deploy failed"; exit 1; }
+printf '%s\n' "$CHAT_ID" > ./decision-board/.chat-id
 
 # after every rebuild — same chat
 npm run build
 pt live-app test ./decision-board --chat-id "$(cat ./decision-board/.chat-id)"
 ```
+
+Write the file only after checking the ID — redirecting the pipeline straight into
+`.chat-id` truncates it the moment a run fails, losing the chat you were iterating on.
 
 `.chat-id` is a convention for you to follow, not a CLI feature — nothing reads it
 automatically. Add it to `.gitignore`; it identifies one person's test chat.
