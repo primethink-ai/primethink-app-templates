@@ -46,6 +46,7 @@ Based on what you're building, read the appropriate reference before writing cod
 | Compiled app or Deep1 sandbox build | `references/developer-guide/compiled-live-apps.md` and generated template `README.md` |
 | Any app, dashboard, admin panel, or tool UI | `references/developer-guide/responsive-live-apps.md` — focused structure selection, device-aware UX, anti-slop, and conditional shell patterns |
 | Automated UI testing of a deployed Live App | `ui-testing/README.md` — plan-driven, deterministic Playwright runner |
+| Publishing a task or Live App project, or testing one in a chat | "Publishing and Testing Projects" below + `references/developer-guide/cli/docs/cli-reference.md` |
 | PrimeThink CLI command/API details | `references/developer-guide/cli/index.md` → exact upstream docs in `docs/` |
 | Live App APIs and patterns | `references/advanced-topics/live-apps/index.md` → specific docs in `docs/` |
 | Task or Agent (AI workflow instructions) | `references/ai-automation/summary.md` |
@@ -151,6 +152,139 @@ cp -R dist/. /documents/app/
 Before deployment, confirm `dist/index.html` exists and keep the output flat. The default template's build runs `scripts/verify-dist.mjs`, which rejects nested output and root-absolute asset URLs. Vite 8 requires Node `20.19+` or `22.12+`. The CLI itself intentionally does not run `npm install`, build commands, or generated code.
 
 Read `references/developer-guide/compiled-live-apps.md` for variants, safety constraints, custom catalogs, and the no-build deployment path.
+
+## Publishing and Testing Projects (`pt task` / `pt live-app`)
+
+Four orchestration commands turn a **project directory** into a PrimeThink task, or into a
+test chat for trying it out (temporary by default, `--permanent` when you mean to keep it).
+They print human-readable progress lines, **not JSON** — parse the last line, never pipe
+them to `jq`.
+
+| Command | Creates | Needs `GOAL.md` | Final line |
+|---|---|---|---|
+| `pt task publish DIR` | a task (no chat) | required, non-empty | `Task ID: 81` |
+| `pt live-app publish DIR` | a task + `@app` files | optional | `Live App task ID: 31` |
+| `pt task test DIR` | a chat | required, non-empty | `Chat URL: …/chats/<id>` |
+| `pt live-app test DIR` | a chat + `@app` files | optional | `Chat URL: …/chats/<id>` |
+
+**Project files** (all optional except where noted): `GOAL.md` (the task goal),
+`.name.config` (name; defaults to the directory name), `.description.config` (description;
+defaults to the name), `INITIAL_PROMPT.md` (initial prompt), `.image.png` (task image —
+uploaded by `live-app publish` only).
+
+**`test` never touches a task; `publish` never touches a chat.** Testing does not update the
+published task — re-run `publish` for that.
+
+### Publish a task or a Live App, and keep the ID
+
+```bash
+pt task publish ./tasks/morning-briefing --virtual-assistant-id 7
+# Created task 81 from tasks/morning-briefing
+# Task ID: 81
+
+set -o pipefail   # without it the pipeline reports awk's status, not pt's
+
+if ! TASK_ID=$(pt task publish ./tasks/morning-briefing --virtual-assistant-id 7 \
+               | tee /dev/stderr | awk -F': ' '/^Task ID: /{print $2}'); then
+    echo "publish failed"; exit 1
+fi
+[ -n "$TASK_ID" ] || { echo "no Task ID in output"; exit 1; }
+
+if ! APP_TASK_ID=$(pt live-app publish ./decision-board --virtual-assistant-id 7 \
+                   | tee /dev/stderr | awk -F': ' '/^Live App task ID: /{print $2}'); then
+    echo "publish failed"; exit 1
+fi
+[ -n "$APP_TASK_ID" ] || { echo "no Live App task ID in output"; exit 1; }
+```
+
+**Check the status *and* the value — neither alone is enough.** Without `pipefail` the
+pipeline reports `awk`'s `0`, so a failed `pt` yields an empty `TASK_ID` and the follow-up run
+creates a duplicate task instead of updating one. And a publish can print its ID line and
+still exit non-zero — a fatal file-upload failure is reported after the sync summary — so an
+ID that is merely non-empty may come from a publish that did not fully succeed.
+
+Re-run with `--task-id "$TASK_ID"` to update instead of creating a duplicate.
+
+**Neither publish command has task-field flags.** The whole option set is `--task-id`,
+`--virtual-assistant-id` (required), `--profile`, `--api-url` — plus `--app-dir` and
+`--version-name` for `live-app`. A newly published task is always `type: private`,
+`status: published`, `chat_type: standard`, with global memory, chat history,
+search-in-chat, search-in-documents, summary, documents/collections, scheduled jobs, email
+integration, share-action and run-immediately all **off**. To change any of that, follow up
+with `pt task update`:
+
+```bash
+pt task update "$TASK_ID" --docs-enabled --scheduled-jobs --global-memory --type public
+```
+
+Those toggles survive re-publishing: an update run (`--task-id`) only PATCHes `name`,
+`description`, `goal`, `initial_prompt`, `virtual_assistant_id`, and `page_type`.
+
+`pt live-app publish` additionally creates the task with `page_type: html`, creates a task
+version (`--version-name`, default `Production`), syncs the app files into the task's `@app`
+folder, and uploads `.image.png` when present. A failed version creation is only a
+`Warning:` — the publish still succeeds. Failed **file** uploads are fatal and are reported
+together after the summary line.
+
+### Test on a chat, and keep the chat ID
+
+`--chat-id` is *optional*: omitting it creates a **new** chat every run — that is the
+default, not something you opt into. Record the ID on the first run so later runs update the
+same chat instead of littering the workspace with new ones:
+
+```bash
+# first run — create and record
+set -o pipefail
+if ! CHAT_ID=$(pt live-app test ./decision-board --permanent \
+               | tee /dev/stderr \
+               | sed -n 's#^Chat URL: .*/chats/##p'); then
+    echo "test deploy failed"; exit 1
+fi
+[ -n "$CHAT_ID" ] || { echo "no Chat URL in output"; exit 1; }
+printf '%s\n' "$CHAT_ID" > ./decision-board/.chat-id
+
+# after every rebuild — same chat
+npm run build
+pt live-app test ./decision-board --chat-id "$(cat ./decision-board/.chat-id)"
+```
+
+Write the file only after checking the ID — redirecting the pipeline straight into
+`.chat-id` truncates it the moment a run fails, losing the chat you were iterating on.
+
+`.chat-id` is a convention for you to follow, not a CLI feature — nothing reads it
+automatically. Add it to `.gitignore`; it identifies one person's test chat.
+
+**Use `--permanent` for any chat you intend to keep.** The default is `--temporary`, which is
+right for a one-shot check but a poor thing to pin an ID to. Only a newly created chat honors
+`--temporary`/`--permanent` and `--workspace-id`; both are ignored when `--chat-id` is given.
+
+`pt task test` requires a non-empty `GOAL.md` — the whole command is "push this goal into a
+chat" — and creates the chat with page type `chat`. `pt live-app test` sets page type `html`
+on create and forces `html` on reuse, treats `GOAL.md` as optional (the `Updated goal for
+chat …` line appears only when the file exists), and does **not** upload `.image.png`, since
+there is no task.
+
+### Artifact rules (both `live-app` commands)
+
+- Files are resolved from `--app-dir`, else the first of `dist/`, `app/`, or the project root
+  that contains `index.html` or `canvas.html`. `canvas.html` is uploaded **as** `index.html`.
+- **The artifact must be flat.** If the artifact dir is a subdirectory, any nested file aborts
+  the run — build to a flat output first. From the project root, only web extensions are
+  picked up (`.js .css .html .json .map .svg .png .jpg .jpeg .gif .webp .woff .woff2`).
+- Same-named remote documents get a **new version** (ID and relative links preserved);
+  identical content prints `Unchanged`.
+
+### Gotchas for all four
+
+- **Exit codes**: `0` on success, `1` on any failure, message on stdout (`Error: 404 - …`,
+  `Error connecting to API: …`, or `Error: <reason>` for a missing/empty `GOAL.md`, a missing
+  `index.html`/`canvas.html` entry, a non-flat artifact, or per-file upload failures).
+- The chat URL host is derived from the active profile's API URL (`api.` → `app.`); override
+  with `--web-url`. `--open` launches a browser, so skip it in CI.
+- `pt live-app test` uploads to `chats/<id>` and `pt live-app publish` to `tasks/<id>`, but
+  both land in the `@app` folder of their owner.
+- These commands publish a **local project directory**. Inside a Deep1 sandbox you deploy by
+  copying the flat `dist/` contents into `/documents/app/` instead (above).
 
 ## Dynamic Page Types: HTML and React
 
@@ -423,7 +557,9 @@ when a human opens the app.
 For repeatable UI testing of a deployed Live App, use the plan-driven workflow in
 `ui-testing/README.md` — **read it before testing**. In short:
 
-1. Deploy/open the app so there is a live chat URL to test.
+1. Deploy/open the app so there is a live chat URL to test — `pt live-app test DIR --permanent`
+   on the first run, then `--chat-id "$(cat DIR/.chat-id)"` to keep testing the same chat
+   (see "Publishing and Testing Projects" above).
 2. Capture the app's **accessibility snapshot** and author `tests/test_plan.yaml`
    from it (a YAML step DSL with semantic `role`/`name`/`text`/`label` targets —
    never guess selectors from memory). For apps, add the phone/tablet/laptop viewport matrix and primary-workflow assertions from the testing README; add navigation-shell assertions only when persistent navigation exists.
