@@ -40,6 +40,14 @@ Interactive web applications with real-time data sync, state management, and Pri
 APIs, integrations, CLI tooling, and authentication.
 → `developer-guide/summary.md`
 
+### Visual Design for Live Apps
+Typography scale, spacing rhythm, color restraint, the Flowbite-vs-plain-Tailwind component vocabulary, and the anti-slop patterns to avoid when styling operational apps; hand-maintained, adapted from Anthropic's public frontend-design skill.
+→ `design.md`
+
+### Platform Known Issues & Constraints
+Known library and runtime incompatibilities (flowbite-react `Modal` under React 19, flat exports, the iframe theme bridge, `response.message`) plus the platform constraints a spec must design around; hand-maintained and shared with App Studio's gap analysis.
+→ `platform-known-issues.md`
+
 ### Resources
 Use cases, troubleshooting, and support channels.
 → `resources/summary.md`

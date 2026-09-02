@@ -8,9 +8,11 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/verify-dist.mjs",
+    "build": "eslint src && vite build && node scripts/verify-dist.mjs && node scripts/pt-doctor.mjs",
     "preview": "vite preview",
-    "verify:dist": "node scripts/verify-dist.mjs"
+    "verify:dist": "node scripts/verify-dist.mjs",
+    "lint": "eslint src",
+    "doctor": "node scripts/pt-doctor.mjs"
   },
   "dependencies": {
     "flowbite": "4.0.2",
@@ -19,8 +21,12 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@eslint/js": "^9.36.0",
     "@tailwindcss/vite": "4.3.3",
     "@vitejs/plugin-react": "6.0.5",
+    "eslint": "^9.36.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^15.15.0",
     "tailwindcss": "4.3.3",
     "vite": "8.2.1"
   }

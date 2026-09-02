@@ -14,7 +14,14 @@
         document.documentElement.classList.toggle('dark', dark);
         document.documentElement.classList.toggle('light', !dark);
       }
+      // The app runs in an iframe: location.search has no parent params, so the
+      // class PrimeThink's server injects on <html> is the next-best signal.
       var forced = new URLSearchParams(location.search).get('theme');
+      if (!forced) {
+        var cl = document.documentElement.classList;
+        if (cl.contains('dark')) forced = 'dark';
+        else if (cl.contains('light')) forced = 'light';
+      }
       apply(forced || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
       window.addEventListener('message', function (event) {
         if (event.data && event.data.type === 'pt:theme') apply(event.data.theme);

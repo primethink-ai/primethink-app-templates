@@ -520,6 +520,8 @@ Reference structure to document:
 - ai-automation/summary.md - Tasks, agents, LLMs, automation
 - advanced-topics/live-apps/ - Live Apps and Pages (full docs in docs/ subdir)
 - developer-guide/summary.md - APIs, integrations, CLI
+- platform-known-issues.md - Known incompatibilities + platform constraints (hand-maintained; preserve this entry verbatim)
+- design.md - Visual design guidance for Live Apps: type scale, spacing, color, component vocabulary, anti-slop (hand-maintained; preserve this entry verbatim)
 - resources/summary.md - Use cases, troubleshooting, support
 
 CURRENT REFERENCE:

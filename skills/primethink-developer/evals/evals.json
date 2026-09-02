@@ -45,6 +45,48 @@
         "solution.md includes documented relevant CLI commands including pt live-app new and chat file inspection/management commands, without inventing Live App deploy/list commands.",
         "solution.md has distinct Admin Live App, Developer, and CLI documentation attribution sections mapping APIs, implementation guidance, and commands to the correct source category."
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "You are extending a compiled React/Vite PrimeThink Live App called Ordini. Add an \"Import from text\" feature and an \"Import from image\" feature: the user pastes an order text (or picks a photo of a paper order), the app asks the chat AI to turn it into JSON rows, and the parsed rows are written to ChatDB as oa_order_line entities. Produce solution.md and the import handler source file. The AI prompt must not clutter the chat transcript, and the user must always know when an import did not work.",
+      "expected_output": "An AI-from-app implementation that sends a hidden message, waits for the task, reads the reply from response.message, extracts JSON robustly, and always surfaces a user-visible failure.",
+      "files": [],
+      "expectations": [
+        "The AI call sends the prompt with pt.addMessage(prompt, { hidden: true }) so the generated prompt does not appear as a visible chat message; the image variant passes FormData first, the prompt second, and { hidden: true } last.",
+        "The reply is awaited with pt.waitForMessageReceived(result.task_id, { timeout: ... }) rather than a hand-rolled setInterval/polling loop.",
+        "The AI text is read from response.message (optionally guarding a plain-string resolution); the code never relies on response.text or response.content as the source of the reply.",
+        "JSON is extracted from the reply with indexOf('[')/lastIndexOf(']') on the outermost array (or with extractJson/askAIJson from pt-ai.js), not with a non-greedy regex that can truncate nested arrays.",
+        "Every failure path — thrown error, unparseable reply, empty result array — produces user-visible feedback (alert, toast, or inline error state); no failure path is a silent no-op.",
+        "Successfully parsed rows are persisted to ChatDB with pt.add/pt.batchAdd as granular oa_order_line entities rather than kept in component state or written as one JSON blob."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "You are working in an existing compiled React 19 + Vite + Tailwind + flowbite-react 0.12 PrimeThink Live App. Add an order-detail modal opened from the order table, and keep the table live-updating when the AI or another member changes an order. Produce solution.md and the changed React source files, including the exact commands you run to validate the change before deploying.",
+      "expected_output": "A React-19-safe modal, a correctly-ordered onEntityChanged subscription, correct pt.list result handling, and a validation step that runs ESLint after the edits.",
+      "files": [],
+      "expectations": [
+        "The modal is NOT flowbite-react's Modal: the solution uses a portal-based custom modal (src/components/Modal.jsx or an equivalent createPortal + Tailwind component) and states that flowbite-react's Modal crashes at runtime under React 19 via @floating-ui/react.",
+        "Any flowbite-react components that are used are imported as flat exports (ModalHeader, TableCell, ToastToggle, TabItem, ...); no dot-notation subcomponent such as Modal.Header or Table.Cell appears.",
+        "The realtime subscription passes the callback FIRST and the options object SECOND — e.g. pt.onEntityChanged(callback, { actions: ['updated'] }) — and never pt.onEntityChanged('oa_order', callback); an entityName filter, if used, is not relied on for updated/deleted events.",
+        "The value returned by pt.onEntityChanged is retained and invoked as the unsubscribe function in React effect cleanup.",
+        "Results of pt.list() are treated as a bare array by default; if code reads .entities it also passes returnMetadata: true in the same call (or normalises both shapes explicitly, e.g. via normList).",
+        "The validation steps run ESLint AFTER the code edits (not only before) and state that Vite/esbuild does not enforce no-undef, so an undeclared or unimported reference bundles silently and fails only at runtime."
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "A deployed compiled PrimeThink Live App renders in dark mode even though PrimeThink is set to light mode; the tester's laptop OS is set to dark. The app's index.html bootstrap currently reads the ?theme= query parameter and otherwise falls back to window.matchMedia('(prefers-color-scheme: dark)'). Diagnose the root cause and produce the corrected bootstrap plus the runtime checks that prove the fix.",
+      "expected_output": "A diagnosis rooted in the iframe context and a three-source theme bridge that prefers the server-injected html class over the OS preference.",
+      "files": [],
+      "expectations": [
+        "The diagnosis states that the app runs inside an iframe and that location.search inside the iframe does not carry the parent page's ?theme= query parameter, so the forced value is null and the OS branch always wins.",
+        "The diagnosis states that PrimeThink's server injects class=\"light\" or class=\"dark\" on the iframe document's <html> element, and that the buggy bridge overwrites that injected class.",
+        "The corrected bootstrap checks three sources in priority order: the ?theme= query param, then the existing light/dark class on document.documentElement, then prefers-color-scheme as the last resort.",
+        "A pt:theme postMessage listener is retained (or added) so the theme switches live after load, and the bootstrap is kept in the entry HTML rather than removed when the entry point is rewritten.",
+        "The solution uses the class-based dark strategy — @custom-variant dark (&:where(.dark, .dark *)) for Tailwind v4 or darkMode: 'class' for v3 — and never a 'system'/prefers-color-scheme default for dark: variants.",
+        "The verification step loads the deployed app with both host themes forced against the opposite OS preference and confirms the largest scaffold and primary-workspace surfaces render light in light mode."
+      ]
     }
   ]
 }
